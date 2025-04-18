@@ -2,150 +2,231 @@ import streamlit as st
 import pandas as pd
 import math
 from pathlib import Path
+import glob
+import os
+import base64
+from jinja2 import Template
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
-    page_title='GDP dashboard',
+    page_title='Enrich Revenue Dashboard',
     page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    layout='wide',
 )
 
 # -----------------------------------------------------------------------------
-# Declare some useful functions.
+# Declare some useful functions/constants.
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+customers = ["Pierce Gainey", "Austin Whitaker"]
+KEY_LISTING_NAME = "Listing Name"
+KEY_REVPAR_INDEX = "RevPAR Index"
+KEY_REVPAR_INDEX_STLY = "RevPAR Index STLY"
+KEY_REVPAR_STLY = "RevPAR STLY"
+KEY_MARKET_REVPAR_STLY = "Market RevPAR STLY"
+KEY_MARKET_PEN = "Market Penetration Index %"
+KEY_MARKET_PEN_STLY = "Market Penetration Index STLY"
+KEY_PAID_OCCUPANCY_STLY = "Paid Occupancy % STLY"
+KEY_MARKET_OCCUPANCY_STLY = "Market Occupancy % STLY"
+KEY_REVPAR_STLY_YOY = "RevPAR STLY YoY %"
+KEY_TOTAL_REV_YOY = "Total Revenue STLY YoY %"
+KEY_OCC_STLY = "Occupancy STLY YoY Difference"
+KEY_REVPAR_PICKUP = "RevPAR Pickup"
+KEY_ADR_INDEX = "ADR Index"
+KEY_ADR_STLY_YOY = "ADR STLY YoY %"
+KEY_ADR_INDEX_STLY = "ADR Index STLY"
+KEY_ADR_STLY = "ADR STLY"
+KEY_MARKET_ADR_STLY = "Market ADR STLY"
+KEY_LABELS = "Labels"
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+def get_diff_percent_bar(df: pd.DataFrame, x: str, y: str, title: str, yaxis_title: str, base: int):
+    df = df.sort_values(by=[y], ignore_index=True)
+    x_vals = df[x]
+    y_vals = df[y] - base  # offset from base
+    base_vals = [1] * len(df)
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+    # Build the custom bar chart
+    fig = go.Figure()
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+    fig.add_trace(go.Bar(
+        x=x_vals,
+        y=y_vals,
+        base=base_vals,
+        marker_color=["green" if y > 0 else ("red" if y > -1 else "gray") for y in y_vals],
+        hovertext=df[KEY_LISTING_NAME],
+        hoverinfo="text+y"
+    ))
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
+    fig.update_layout(
+        yaxis_title=yaxis_title,
+        yaxis=dict(
+            zeroline=False,
+            showgrid=True
+        ),
+        title=title,
+        shapes=[
+            dict(
+                type="line",
+                x0=-0.5,
+                x1=len(df) - 0.5,
+                y0=base,
+                y1=base,
+                line=dict(color="black", dash="dash", width=1)
+            )
+        ]
     )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
+    return fig
 
 # -----------------------------------------------------------------------------
 # Draw the actual page
 
 # Set the title that appears at the top of the page.
+st.image("images/enrich_logo.jpeg")
 '''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
+# :earth_americas: Enrich Revenue Dashboard
 '''
 
 # Add some spacing
 ''
 ''
+uploaded_file = st.file_uploader("Upload a file", type=["csv", "xlsx"])
+df = None
+if uploaded_file:
+    try:
+        df = pd.read_csv(uploaded_file)
+    except:
+        df = pd.read_excel(uploaded_file)
+else:
+    DATA_FILENAME = Path(__file__).parent/'data/revpar_data.xlsx'
+    df = pd.read_excel(DATA_FILENAME)
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+if df is not None:
+    selected_customer = st.selectbox(
+    'Which customer is this report for?',
+    customers,
+    # index=None,
+    # placeholder="Select a customer..."
+    )
+    ''
+    ''
+    
+    header1, header2 = st.columns([0.2, 0.7], vertical_alignment="center")
+    logo_paths = glob.glob(os.path.join("customer_logos", selected_customer + ".*"))
+    logo_path = logo_paths[0]
+    header1.image(logo_path)
+    header2.write(f"""
+        # Monthly Revenue Report
+        ### {selected_customer}
+        """
+    )
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+    # Calculations
+    df[KEY_REVPAR_INDEX] = df[KEY_REVPAR_INDEX] / 100
+    df[KEY_MARKET_PEN] = df[KEY_MARKET_PEN] / 100
+    df[KEY_REVPAR_INDEX_STLY] = df[KEY_REVPAR_STLY] / df[KEY_MARKET_REVPAR_STLY]
+    df[KEY_MARKET_PEN_STLY] = df[KEY_PAID_OCCUPANCY_STLY] / df[KEY_MARKET_OCCUPANCY_STLY]
+    df[KEY_ADR_INDEX_STLY] = df[KEY_ADR_STLY] / df[KEY_MARKET_ADR_STLY]
 
-countries = gdp_df['Country Code'].unique()
+    # Create Charts
+    first1, first2 = st.columns(2)
+    df[KEY_LABELS] = df[KEY_LISTING_NAME].str[:20] + "..."
+    rpi_thisPeriod = get_diff_percent_bar(df, KEY_LABELS, KEY_REVPAR_INDEX, "RevPAR Index this Period", "RevPAR Index", 1)
+    first1.plotly_chart(rpi_thisPeriod, use_container_width=True)
+    rpi_stly = get_diff_percent_bar(df, KEY_LABELS, KEY_REVPAR_INDEX_STLY, "RevPar Index STLY", "RevPar Index", 1)
+    first2.plotly_chart(rpi_stly, use_container_width=True)
 
-if not len(countries):
-    st.warning("Select at least one country")
+    second1, second2 = st.columns(2)
+    mpi_thisPeriod = get_diff_percent_bar(df, KEY_LABELS, KEY_MARKET_PEN, "Market Penetration Index", "MPI", 1)
+    second1.plotly_chart(mpi_thisPeriod, use_container_width=True)
+    mpi_stly = get_diff_percent_bar(df, KEY_LABELS, KEY_MARKET_PEN_STLY, "Market Penetration Index STLY", "MPI", 1)
+    second2.plotly_chart(mpi_stly, use_container_width=True)
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
+    # HTML template with placeholders
+    html_template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Monthly Revenue Report</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                padding: 40px;
+            }
 
-''
-''
-''
+            .header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 40px;
+            }
 
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
+            .logo {
+                height: 120px;
+                margin-right: 30px;
+            }
 
-st.header('GDP over time', divider='gray')
+            .title-text h1 {
+                margin: 0;
+                font-size: 2.5em;
+            }
 
-''
+            .title-text h2 {
+                margin: 0;
+                font-weight: normal;
+                font-size: 1.2em;
+            }
 
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
+            .chart-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 20px;
+            }
 
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+            .chart {
+                width: 48%;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <img class="logo" src="{{ logo_url }}">
+            <div class="title-text">
+                <h1>Monthly Revenue Report</h1>
+                <h2>{{ customer }} </h2>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart">{{ chart1 | safe }}</div>
+            <div class="chart">{{ chart2 | safe }}</div>
+        </div>
+        <div class="chart-row">
+            <div class="chart">{{ chart3 | safe }}</div>
+            <div class="chart">{{ chart4 | safe }}</div>
+        </div>
+    </body>
+    </html>
+    """
+    with open(logo_path, "rb") as f:
+        logo_b64 = base64.b64encode(f.read()).decode()
+    logo_url = f"data:image/png;base64,{logo_b64}"
+    # Render the HTML
+    template = Template(html_template)
+    rendered_html = template.render(
+        logo_url=logo_url,
+        customer=selected_customer,
+        chart1=rpi_thisPeriod.to_html(include_plotlyjs="cdn", full_html=False),
+        chart2=rpi_stly.to_html(include_plotlyjs="cdn", full_html=False),
+        chart3=mpi_thisPeriod.to_html(include_plotlyjs="cdn", full_html=False),
+        chart4=mpi_stly.to_html(include_plotlyjs="cdn", full_html=False)
+    )
+    ''
+    ''
+    download1, download2 = st.columns(2)
+    download1.download_button(
+        label="Download Report",
+        data=rendered_html,
+        file_name=selected_customer.replace(" ", "_") + "_revenue_report.html",
+        mime="text/html",
+        icon=":material/download:"
+    )

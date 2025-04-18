@@ -82,7 +82,7 @@ def get_diff_percent_bar(df: pd.DataFrame, x: str, y: str, title: str, yaxis_tit
 # Draw the actual page
 
 # Set the title that appears at the top of the page.
-st.image("images/enrich_logo.jpeg")
+st.image("images/enrich_logo.png")
 '''
 # :earth_americas: Enrich Revenue Dashboard
 '''

@@ -92,6 +92,18 @@ def render_upload_page():
             customers,
             help="Select a customer from the dropdown."
         )
+        # Dropdowns for selecting month and year
+        month = st.selectbox(
+            "Select Month",
+            options=[
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ]
+        )
+        year = st.selectbox(
+            "Select Year",
+            options=[str(y) for y in range(2020, pd.Timestamp.now().year + 1)]
+        )
         uploaded_file = st.file_uploader(
             "Upload a file", 
             type=["csv", "xlsx"], 
@@ -122,7 +134,7 @@ def render_upload_page():
                 header1.image(logo_path)
                 header2.write(f"""
                     # Monthly Revenue Report
-                    ### {selected_customer}
+                    ### {selected_customer} {month} {year}
                     """
                 )
 
@@ -199,7 +211,7 @@ def render_upload_page():
                         <img class="logo" src="{{ logo_url }}">
                         <div class="title-text">
                             <h1>Monthly Revenue Report</h1>
-                            <h2>{{ customer }} </h2>
+                            <h2>{{ customer }} {{month}} {{year}}</h2>
                         </div>
                     </div>
                     <div class="chart-row">
@@ -221,6 +233,8 @@ def render_upload_page():
                 rendered_html = template.render(
                     logo_url=logo_url,
                     customer=selected_customer,
+                    month=month,
+                    year=year,
                     chart1=rpi_thisPeriod.to_html(include_plotlyjs="cdn", full_html=False),
                     chart2=rpi_stly.to_html(include_plotlyjs="cdn", full_html=False),
                     chart3=mpi_thisPeriod.to_html(include_plotlyjs="cdn", full_html=False),
@@ -228,14 +242,6 @@ def render_upload_page():
                 )
                 ''
                 ''
-                # download1, download2 = st.columns(2)
-                # download1.download_button(
-                #     label="Download Report",
-                #     data=rendered_html,
-                #     file_name=selected_customer.replace(" ", "_") + "_revenue_report.html",
-                #     mime="text/html",
-                #     icon=":material/download:"
-                # )
 
                 @st.fragment
                 def export_report():

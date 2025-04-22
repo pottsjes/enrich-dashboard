@@ -134,7 +134,7 @@ def render_upload_page():
                 header1.image(logo_path)
                 header2.write(f"""
                     # Monthly Revenue Report
-                    ### {selected_customer} {month} {year}
+                    ### {selected_customer} - {month} {year}
                     """
                 )
 
@@ -211,7 +211,7 @@ def render_upload_page():
                         <img class="logo" src="{{ logo_url }}">
                         <div class="title-text">
                             <h1>Monthly Revenue Report</h1>
-                            <h2>{{ customer }} {{month}} {{year}}</h2>
+                            <h2>{{ customer }} - {{month}} {{year}}</h2>
                         </div>
                     </div>
                     <div class="chart-row">
@@ -253,7 +253,7 @@ def render_upload_page():
 
                         # Save the HTML file to the "reports" folder
                         first_name, last_name = selected_customer.split()
-                        file_name = f"{first_name.lower()}_{last_name.lower()}_{pd.Timestamp.now().strftime('%m%Y')}.html"
+                        file_name = f"{first_name.lower()}_{last_name.lower()}_{pd.Timestamp(month + ' 1, ' + year).strftime('%m%Y')}.html"
                         file_path = os.path.join(reports_folder, file_name)
 
                         with open(file_path, "w", encoding="utf-8") as f:

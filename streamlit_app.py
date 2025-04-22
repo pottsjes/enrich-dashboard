@@ -7,9 +7,9 @@ import base64
 from jinja2 import Template
 import plotly.express as px
 import plotly.graph_objects as go
-from pages.report import render_report_page
-from pages.home import render_home_page
-from pages.upload import render_upload_page
+from helpers.report import render_report_page
+from helpers.home import render_home_page
+from helpers.upload import render_upload_page
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(

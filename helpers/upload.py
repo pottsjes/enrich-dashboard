@@ -1,12 +1,9 @@
-import base64
 from io import BytesIO
 import streamlit as st
 import pandas as pd
-import os
-import plotly.graph_objects as go
 import plotly.io as pio
+from PIL import Image
 from fpdf import FPDF
-import glob
 from constants.constants import (
     KEY_LISTING_NAME,
     KEY_REVPAR_INDEX,
@@ -36,187 +33,11 @@ from constants.constants import (
     REPORT_WIDTH,
     customers
 )
-
-
-def get_diff_percent_bar(df: pd.DataFrame, x: str, y: str, title: str, yaxis_title: str, base: int):
-    df = df.sort_values(by=[y], ignore_index=True)
-    x_vals = df[x]
-    y_vals = df[y] - base  # offset from base
-    base_vals = [1] * len(df)
-
-    # Build the custom bar chart
-    fig = go.Figure()
-
-    fig.add_trace(go.Bar(
-        x=x_vals,
-        y=y_vals,
-        base=base_vals,
-        marker_color=["green" if y > 0 else ("red" if y > -1 else "gray") for y in y_vals],
-        hovertext=df[KEY_LISTING_NAME],
-        hoverinfo="text+y"
-    ))
-
-    fig.update_layout(
-        yaxis_title=yaxis_title,
-        yaxis=dict(
-            zeroline=False,
-            showgrid=True
-        ),
-        xaxis=dict(
-            tickangle=45,
-            showticklabels=True
-        ),
-        title=title,
-        title_font_size=30,
-        shapes=[
-            dict(
-                type="line",
-                x0=-0.5,
-                x1=len(df) - 0.5,
-                y0=base,
-                y1=base,
-                line=dict(color="black", dash="dash", width=1)
-            )
-        ],
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="black")
-    )
-    return fig
-
-def listing_metric_table(df, metric_current, metric_stly, title, base=1.0):
-    #sort values in reverse
-    df = df.sort_values(by=[metric_current], ignore_index=True, ascending=False)
-    df = df[(df[metric_current] != 0.0) | (df[metric_stly] != 0.0)].reset_index(drop=True)
-    font_size = 20 * min(20/ len(df), 1)
-    
-    fig = go.Figure()
-    for i, row in df.iterrows():
-        y = -i * 2
-        name = row["Listing Name"]
-        curr_val = row[metric_current]
-        stly_val = row[metric_stly]
-
-        # Listing name on left
-        fig.add_shape(
-            type="rect",
-            x0=0,
-            x1=7,
-            y0=y - 1,
-            y1=y + 1,
-            fillcolor="rgba(100,155,200,0.15)" if (i%2) == 0 else "white",
-            line=dict(width=0),
-            layer="below",
-        )
-        fig.add_trace(go.Scatter(
-            x=[3],
-            y=[y],
-            text=[name],
-            mode="text",
-            textfont=dict(size=font_size, color="black"),
-            textposition="middle left",
-            showlegend=False
-        ))
-
-        def add_bar(value, y_offset, period_label):
-            bar_len = value - base
-            value_offset = (bar_len / abs(bar_len)) * 0.1 if bar_len != 0 else 0
-            color = "lightgray" if bar_len == -1 else "lightgreen" if bar_len > 0 else "pink"
-            x = 5
-            # Bar shape
-            fig.add_shape(
-                type="rect",
-                x0=x,
-                x1=x + bar_len,
-                y0=y + y_offset - 0.3,
-                y1=y + y_offset + 0.3,
-                fillcolor=color,
-                line=dict(width=0),
-                layer="below",
-            )
-            # Bar value label
-            fig.add_trace(go.Scatter(
-                x=[x + (bar_len + value_offset)],
-                y=[y + y_offset],
-                text=[f"{value:.2f}" if value != 0.0 else ""],
-                mode="text",
-                textfont=dict(size=font_size),
-                showlegend=False
-            ))
-            # Period label
-            fig.add_trace(go.Scatter(
-                x=[x-1.8],
-                y=[y + y_offset],
-                text=[period_label],
-                mode="text",
-                textfont=dict(size=font_size),
-                textposition="middle right",
-                showlegend=False
-            ))
-
-        add_bar(curr_val, 0.3, "Current")     # Current metric
-        add_bar(stly_val, -0.3, "STLY")   # STLY metric
-
-    fig.update_layout(
-        title=dict(text=title, x=0.5),
-        title_font_size=50,
-        xaxis=dict(showgrid=False, showticklabels=False, zeroline=False, range=[0, 7]),
-        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False, range=[-len(df)*2 + 1, 1]),
-        height=1600,
-        width=2400
-    )
-
-    return fig
-
-
-def charts_for_listing(row):
-    def make_comparison_chart(title, left_key, left_val, right_key, right_val, percent=False):
-        fig = go.Figure()
-        fig.add_trace(go.Bar(
-            y=[left_val],
-            name=left_key,
-            marker_color="lightgray",
-            text=[f"{left_val:.0f}%" if percent else f"${left_val:.0f}"],
-            textposition="auto",
-            textfont=dict(size=20)
-        ))
-        fig.add_trace(go.Bar(
-            y=[right_val],
-            name=right_key,
-            marker_color="black",
-            text=[f"{right_val:.0f}%" if percent else f"${right_val:.0f}"],
-            textposition="auto",
-            textfont=dict(size=20)
-        ))
-        fig.update_layout(
-            title=dict(
-                text=title,
-                font=dict(size=30),
-                x=0.5,  # Center title
-                xanchor='center'
-            ),
-            barmode="group",
-            xaxis=dict(showticklabels=False),  # Removes x-axis labels
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=0.96,
-                xanchor="right",
-                x=1
-            ),
-            font=dict(color="black"),
-            title_font_size=30,
-            margin=dict(t=50)
-        )
-        return fig
-
-    return [
-        make_comparison_chart("Total Occupancy", "Current", row[KEY_OCCUPANCY], "STLY", row[KEY_OCCUPANCY_STLY], percent=True),
-        make_comparison_chart("Marlet Occupancy", "Current", row[KEY_MARKET_OCCUPANCY], "STLY", row[KEY_MARKET_OCCUPANCY_STLY], percent=True), 
-        make_comparison_chart("Total Revenue", "Current", row[KEY_TOTAL_REVENUE], "STLY", row[KEY_TOTAL_REVENUE_STLY]),
-        make_comparison_chart("RevPAR", "Current", row[KEY_TOTAL_REVPAR], "Market", row[KEY_MARKET_REVPAR])
-    ]
-
+from helpers.utils import (
+    charts_for_listing,
+    get_diff_percent_bar,
+    listing_metric_table
+)
 
 def render_upload_page():
     # Set the title that appears at the top of the page.
@@ -230,33 +51,52 @@ def render_upload_page():
     ''
     # Add a form for customer selection and file upload
     with st.form(key="customer_file_form"):
-        selected_customer = st.selectbox(
-            'Which customer is this report for?',
-            customers,
-            help="Select a customer from the dropdown."
+        # selected_customer = st.selectbox(
+        #     'Which customer is this report for?',
+        #     customers,
+        #     help="Select a customer from the dropdown."
+        # )
+        selected_customer = st.text_input(
+            "Selected Customer",
+            value="",
+            placeholder="Enter customer name",
+            help="This is the customer for whom the report will be generated."
         )
         # Dropdowns for selecting month and year
         month = st.selectbox(
             "Select Month",
+            help="Select the month for the report.",
             options=[
                 "January", "February", "March", "April", "May", "June",
                 "July", "August", "September", "October", "November", "December"
-            ]
+            ],
+            index=pd.Timestamp.now().month - 1  # Default to current month
         )
         year = st.selectbox(
             "Select Year",
-            options=[str(y) for y in range(2020, pd.Timestamp.now().year + 1)]
+            help="Select the year for the report.",
+            options=[str(y) for y in range(2020, pd.Timestamp.now().year + 1)],
+            index=pd.Timestamp.now().year - 2020  # Default to current year
         )
         uploaded_file = st.file_uploader(
             "Upload a file", 
             type=["csv", "xlsx"], 
             help="Upload a CSV or Excel file."
         )
+        uploaded_logo = st.file_uploader(
+            "Upload a logo", 
+            type=["png", "jpg", "jpeg"], 
+            help="Upload a PNG or JPEG file."
+        )
+        selected_color = st.color_picker(
+            "Select a color for the report header",
+            value="#d4cfcf",  # Default muted beige color
+            help="Choose a color for the report header background."
+        )
         uploaded_file = "data/new_data.xlsx"  # For testing purposes
         submit_button = st.form_submit_button(label="Generate Report", help="Click to generate the report.")
 
-    # Ensure both fields are filled before proceeding
-    if uploaded_file:
+    if submit_button:
         if not selected_customer:
             st.error("Please select a customer.")
         elif not uploaded_file:
@@ -269,10 +109,11 @@ def render_upload_page():
                 df = pd.read_excel(uploaded_file)
 
             if df is not None:
-                logo_paths = glob.glob(os.path.join("customer_logos", selected_customer + ".*"))
-                logo_path = logo_paths[0]
-
                 # Calculations
+                if uploaded_logo:
+                    logo_image = Image.open(uploaded_logo)
+                    logo_width, logo_height = logo_image.size
+                    logo_height = logo_height * (25 / logo_width)  # Scale height to fit in the header
                 df[KEY_REVPAR_INDEX] = df[KEY_REVPAR_INDEX] / 100
                 df[KEY_MARKET_PEN] = df[KEY_MARKET_PEN] / 100
                 df[KEY_REVPAR_INDEX_STLY] = df[KEY_TOTAL_REVPAR_STLY] / df[KEY_MARKET_REVPAR_STLY]
@@ -302,12 +143,13 @@ def render_upload_page():
                 # Create header page
                 def create_table_page(current_metric, stly_metric, title):
                     pdf.add_page()
-                    pdf.set_fill_color(200, 190, 180)  # muted beige background
+                    pdf.set_fill_color(selected_color)  # muted beige background
                     pdf.rect(0, 0, REPORT_WIDTH, 35, style='F')
                     pdf.set_font("Arial", size=30)
                     pdf.set_xy(15, 8)
                     pdf.cell(267, 20, txt=f"Monthly Revenue Report - {selected_customer} ", ln=True, align="C")
-                    pdf.image(logo_path, x=15, y=5, w=25)
+                    if uploaded_logo:
+                        pdf.image(uploaded_logo, x=15, y=5 + ((25 - logo_height)/2), w=25)
                     table = listing_metric_table(df, current_metric, stly_metric, title)
                     add_img(pdf, table, x=25, y=40, h=165)
 
@@ -319,10 +161,11 @@ def render_upload_page():
                 for i, row in df.iterrows():
                     # if i > 3:
                     #     break
+                    # print(f"{i + 1}")
                     listing_name = row[KEY_LISTING_NAME]
                     pdf.add_page()
                     # Header
-                    pdf.set_fill_color(200, 190, 180)  # muted beige background
+                    pdf.set_fill_color(selected_color)  # muted beige background
                     pdf.rect(0, 0, REPORT_WIDTH, 35, style='F')
                     pdf.set_xy(15, 8)
                     title_font_size = 20 * min(1, (65/len(listing_name)))
@@ -331,10 +174,10 @@ def render_upload_page():
                     pdf.cell(240, 10, listing_name, ln=True)
                     pdf.set_xy(15, 18)
                     pdf.set_font("Arial", "", 12)
-                    print(f"{i + 1}")
                     pdf.cell(0, 10, f"{month} {year} Report", ln=False)
                     # Logo
-                    pdf.image(logo_path, x=257, y=5, w=25)
+                    if uploaded_logo:
+                        pdf.image(uploaded_logo, x=257, y=5 + ((25 - logo_height)/2), w=25)
                     # KPI Boxes
                     pdf.set_font("Arial", "B", 12)
                     pdf.set_text_color(0, 0, 0)
@@ -361,7 +204,7 @@ def render_upload_page():
                     chart_x_spacing = 90
                     chart_y_spacing = 60
 
-                    for i, fig in enumerate(charts_for_listing(row)):  # You'd define this to generate or return 4 Plotly charts
+                    for i, fig in enumerate(charts_for_listing(row)):
                         x = 108 + (i % 2) * chart_x_spacing
                         y = chart_y_start + (i // 2) * chart_y_spacing
                         add_img(pdf, fig, x=x, y=y, w=80)

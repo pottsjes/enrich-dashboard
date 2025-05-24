@@ -1,14 +1,4 @@
 import streamlit as st
-import pandas as pd
-import streamlit.components.v1 as components
-import glob
-import os
-import base64
-from jinja2 import Template
-import plotly.express as px
-import plotly.graph_objects as go
-from helpers.report import render_report_page
-from helpers.home import render_home_page
 from helpers.upload import render_upload_page
 
 # Set the title and favicon that appear in the Browser's tab bar.
@@ -25,9 +15,4 @@ if not st.query_params.get_all("page"):
 
 # -----------------------------------------------------------------------------
 # Draw the actual page
-if st.query_params.page == "report":
-    render_report_page()
-elif st.query_params.page == "upload":
-    render_upload_page()
-else:
-    render_home_page()
+render_upload_page()

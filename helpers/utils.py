@@ -206,7 +206,7 @@ def charts_for_listing(row):
 
     return [
         make_comparison_chart("Total Occupancy", "Current", row[KEY_OCCUPANCY], "STLY", row[KEY_OCCUPANCY_STLY], percent=True),
-        make_comparison_chart("Marlet Occupancy", "Current", row[KEY_MARKET_OCCUPANCY], "STLY", row[KEY_MARKET_OCCUPANCY_STLY], percent=True), 
+        make_comparison_chart("Market Occupancy", "Current", row[KEY_MARKET_OCCUPANCY], "STLY", row[KEY_MARKET_OCCUPANCY_STLY], percent=True), 
         make_comparison_chart("Total Revenue", "Current", row[KEY_TOTAL_REVENUE], "STLY", row[KEY_TOTAL_REVENUE_STLY]),
         make_comparison_chart("RevPAR", "Current", row[KEY_TOTAL_REVPAR], "Market", row[KEY_MARKET_REVPAR])
     ]

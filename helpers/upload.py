@@ -147,7 +147,7 @@ def render_upload_page():
                     pdf.rect(0, 0, REPORT_WIDTH, 35, style='F')
                     pdf.set_font("Arial", size=30)
                     pdf.set_xy(15, 8)
-                    pdf.cell(267, 20, txt=f"Monthly Revenue Report - {selected_customer} ", ln=True, align="C")
+                    pdf.cell(267, 20, txt=f"{month} {year} Revenue Report - {selected_customer} ", ln=True, align="C")
                     if uploaded_logo:
                         pdf.image(uploaded_logo, x=15, y=5 + ((25 - logo_height)/2), w=25)
                     table = listing_metric_table(df, current_metric, stly_metric, title)

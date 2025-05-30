@@ -118,7 +118,7 @@ def render_upload_page():
                 df[KEY_MARKET_PEN] = df[KEY_MARKET_PEN] / 100
                 df[KEY_REVPAR_INDEX_STLY] = df[KEY_TOTAL_REVPAR_STLY] / df[KEY_MARKET_REVPAR_STLY]
                 df[KEY_MARKET_PEN_STLY] = df[KEY_PAID_OCCUPANCY_STLY] / df[KEY_MARKET_OCCUPANCY_STLY]
-                df[KEY_ADR_INDEX_STLY] = df[KEY_TOTAL_ADR_STLY] / df[KEY_MARKET_ADR_STLY]
+                # df[KEY_ADR_INDEX_STLY] = df[KEY_TOTAL_ADR_STLY] / df[KEY_MARKET_ADR_STLY]
 
                 # Create Charts
                 df[KEY_LABELS] = df[KEY_LISTING_NAME].str[:20] + "..."

@@ -208,19 +208,19 @@ def charts_for_listing(row):
         make_comparison_chart("RevPAR", "Current", row[KEY_RENTAL_REVPAR], "Market", row[KEY_MARKET_REVPAR])
     ]
 
-@st.dialog("Data Validation")
 def validate_data(df: pd.DataFrame) -> bool:
     if df.empty:
-        st.write("DataFrame is empty. Please upload a valid file.")
+        show_validation_dialog("DataFrame is empty. Please upload a valid file.")
         return False
     missing = get_missing_columns(df)
     if missing:
-        st.markdown("**Missing required columns:**\n" + "\n".join(f"- `{col}`" for col in missing))
-        return False
-    if not all(df[col].dtype in [float, int] for col in REQUIRED_COLUMNS if col in df.columns):
-        st.write("One or more required columns have incorrect data types.")
+        show_validation_dialog("**Missing required columns:**\n" + "\n".join(f"- `{col}`" for col in missing))
         return False
     return True
+
+@st.dialog("Data Validation Error")
+def show_validation_dialog(message):
+    st.markdown(message)
 
 def get_missing_columns(df: pd.DataFrame) -> list:
     return set(REQUIRED_COLUMNS) - set(df.columns)

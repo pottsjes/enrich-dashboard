@@ -52,11 +52,11 @@ def render_upload_page():
         #     customers,
         #     help="Select a customer from the dropdown."
         # )
-        selected_customer = st.text_input(
-            "Selected Customer",
+        report_title = st.text_input(
+            "Report Title",
             value="",
-            placeholder="Enter customer name",
-            help="This is the customer for whom the report will be generated."
+            placeholder="Enter title for the report",
+            help="Enter a title for the report. This will be displayed at the top of the report."
         )
         # Dropdowns for selecting month and year
         month = st.selectbox(
@@ -93,9 +93,7 @@ def render_upload_page():
         submit_button = st.form_submit_button(label="Generate Report", help="Click to generate the report.")
 
     if submit_button:
-        if not selected_customer:
-            st.error("Please select a customer.")
-        elif not uploaded_file:
+        if not uploaded_file:
             st.error("Please upload a file.")
         else:
             #Process the uploaded file
@@ -142,7 +140,7 @@ def render_upload_page():
                     pdf.rect(0, 0, REPORT_WIDTH, 35, style='F')
                     pdf.set_font("Arial", size=30)
                     pdf.set_xy(15, 8)
-                    pdf.cell(267, 20, txt=f"{month} {year} Revenue Report - {selected_customer} ", ln=True, align="C")
+                    pdf.cell(267, 20, txt=f"{month} {year} - {report_title}", ln=True, align="C")
                     if uploaded_logo:
                         pdf.image(uploaded_logo, x=15, y=5 + ((25 - logo_height)/2), w=25)
                     table = listing_metric_table(df, current_metric, stly_metric, title)

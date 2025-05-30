@@ -93,7 +93,7 @@ def render_upload_page():
             value="#d4cfcf",  # Default muted beige color
             help="Choose a color for the report header background."
         )
-        uploaded_file = "data/new_data.xlsx"  # For testing purposes
+        # uploaded_file = "data/new_data.xlsx"  # For testing purposes
         submit_button = st.form_submit_button(label="Generate Report", help="Click to generate the report.")
 
     if submit_button:

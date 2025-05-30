@@ -8,23 +8,18 @@ from constants.constants import (
     KEY_LISTING_NAME,
     KEY_REVPAR_INDEX,
     KEY_REVPAR_INDEX_STLY,
-    KEY_TOTAL_REVPAR,
-    KEY_TOTAL_REVPAR_STLY,
+    KEY_RENTAL_REVPAR,
+    KEY_RENTAL_REVPAR_STLY,
     KEY_MARKET_REVPAR,
     KEY_MARKET_REVPAR_STLY,
     KEY_MARKET_PEN,
     KEY_MARKET_PEN_STLY,
     KEY_PAID_OCCUPANCY,
     KEY_PAID_OCCUPANCY_STLY,
-    KEY_OCCUPANCY,
-    KEY_OCCUPANCY_STLY,
+    KEY_PAID_OCCUPANCY,
+    KEY_PAID_OCCUPANCY_STLY,
     KEY_MARKET_OCCUPANCY,
     KEY_MARKET_OCCUPANCY_STLY,
-    KEY_ADR_INDEX_STLY,
-    KEY_TOTAL_ADR,
-    KEY_TOTAL_ADR_STLY,
-    KEY_MARKET_ADR,
-    KEY_MARKET_ADR_STLY,
     KEY_TOTAL_REVENUE,
     KEY_TOTAL_REVENUE_STLY,
     KEY_BOOKED_NIGHTS_PICKUP,
@@ -36,7 +31,8 @@ from constants.constants import (
 from helpers.utils import (
     charts_for_listing,
     get_diff_percent_bar,
-    listing_metric_table
+    listing_metric_table,
+    validate_data
 )
 
 def render_upload_page():
@@ -108,7 +104,7 @@ def render_upload_page():
             except:
                 df = pd.read_excel(uploaded_file)
 
-            if df is not None:
+            if validate_data(df):
                 # Calculations
                 if uploaded_logo:
                     logo_image = Image.open(uploaded_logo)
@@ -116,9 +112,8 @@ def render_upload_page():
                     logo_height = logo_height * (25 / logo_width)  # Scale height to fit in the header
                 df[KEY_REVPAR_INDEX] = df[KEY_REVPAR_INDEX] / 100
                 df[KEY_MARKET_PEN] = df[KEY_MARKET_PEN] / 100
-                df[KEY_REVPAR_INDEX_STLY] = df[KEY_TOTAL_REVPAR_STLY] / df[KEY_MARKET_REVPAR_STLY]
+                df[KEY_REVPAR_INDEX_STLY] = df[KEY_RENTAL_REVPAR_STLY] / df[KEY_MARKET_REVPAR_STLY]
                 df[KEY_MARKET_PEN_STLY] = df[KEY_PAID_OCCUPANCY_STLY] / df[KEY_MARKET_OCCUPANCY_STLY]
-                # df[KEY_ADR_INDEX_STLY] = df[KEY_TOTAL_ADR_STLY] / df[KEY_MARKET_ADR_STLY]
 
                 # Create Charts
                 df[KEY_LABELS] = df[KEY_LISTING_NAME].str[:20] + "..."

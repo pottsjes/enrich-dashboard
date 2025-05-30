@@ -1,3 +1,4 @@
+import streamlit as st
 import pandas as pd
 import os
 import plotly.graph_objects as go
@@ -5,29 +6,25 @@ from constants.constants import (
     KEY_LISTING_NAME,
     KEY_REVPAR_INDEX,
     KEY_REVPAR_INDEX_STLY,
-    KEY_TOTAL_REVPAR,
-    KEY_TOTAL_REVPAR_STLY,
+    KEY_RENTAL_REVPAR,
+    KEY_RENTAL_REVPAR_STLY,
     KEY_MARKET_REVPAR,
     KEY_MARKET_REVPAR_STLY,
     KEY_MARKET_PEN,
     KEY_MARKET_PEN_STLY,
     KEY_PAID_OCCUPANCY,
     KEY_PAID_OCCUPANCY_STLY,
-    KEY_OCCUPANCY,
-    KEY_OCCUPANCY_STLY,
+    KEY_PAID_OCCUPANCY,
+    KEY_PAID_OCCUPANCY_STLY,
     KEY_MARKET_OCCUPANCY,
     KEY_MARKET_OCCUPANCY_STLY,
-    KEY_ADR_INDEX_STLY,
-    KEY_TOTAL_ADR,
-    KEY_TOTAL_ADR_STLY,
-    KEY_MARKET_ADR,
-    KEY_MARKET_ADR_STLY,
     KEY_TOTAL_REVENUE,
     KEY_TOTAL_REVENUE_STLY,
     KEY_BOOKED_NIGHTS_PICKUP,
     KEY_LABELS,
     REPORT_HEIGHT,
     REPORT_WIDTH,
+    REQUIRED_COLUMNS,
     customers
 )
 
@@ -205,8 +202,25 @@ def charts_for_listing(row):
         return fig
 
     return [
-        make_comparison_chart("Total Occupancy", "Current", row[KEY_OCCUPANCY], "STLY", row[KEY_OCCUPANCY_STLY], percent=True),
+        make_comparison_chart("Total Occupancy", "Current", row[KEY_PAID_OCCUPANCY], "STLY", row[KEY_PAID_OCCUPANCY_STLY], percent=True),
         make_comparison_chart("Market Occupancy", "Current", row[KEY_MARKET_OCCUPANCY], "STLY", row[KEY_MARKET_OCCUPANCY_STLY], percent=True), 
         make_comparison_chart("Total Revenue", "Current", row[KEY_TOTAL_REVENUE], "STLY", row[KEY_TOTAL_REVENUE_STLY]),
-        make_comparison_chart("RevPAR", "Current", row[KEY_TOTAL_REVPAR], "Market", row[KEY_MARKET_REVPAR])
+        make_comparison_chart("RevPAR", "Current", row[KEY_RENTAL_REVPAR], "Market", row[KEY_MARKET_REVPAR])
     ]
+
+@st.dialog("Data Validation")
+def validate_data(df: pd.DataFrame) -> bool:
+    if df.empty:
+        st.write("DataFrame is empty. Please upload a valid file.")
+        return False
+    missing = get_missing_columns(df)
+    if missing:
+        st.markdown("**Missing required columns:**\n" + "\n".join(f"- `{col}`" for col in missing))
+        return False
+    if not all(df[col].dtype in [float, int] for col in REQUIRED_COLUMNS if col in df.columns):
+        st.write("One or more required columns have incorrect data types.")
+        return False
+    return True
+
+def get_missing_columns(df: pd.DataFrame) -> list:
+    return set(REQUIRED_COLUMNS) - set(df.columns)

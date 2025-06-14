@@ -1,4 +1,5 @@
 from io import BytesIO
+import math
 import streamlit as st
 import pandas as pd
 import plotly.io as pio
@@ -89,7 +90,7 @@ def render_upload_page():
             value="#d4cfcf",  # Default muted beige color
             help="Choose a color for the report header background."
         )
-        # uploaded_file = "data/new_data.xlsx"  # For testing purposes
+        uploaded_file = "data/new_data.xlsx"  # For testing purposes
         submit_button = st.form_submit_button(label="Generate Report", help="Click to generate the report.")
 
     if submit_button:
@@ -101,6 +102,9 @@ def render_upload_page():
                 df = pd.read_csv(uploaded_file)
             except:
                 df = pd.read_excel(uploaded_file)
+
+            df = pd.concat([df, df, df])
+            print(f"DataFrame shape: {df.shape}")
 
             if validate_data(df):
                 # Calculations
@@ -134,7 +138,7 @@ def render_upload_page():
                 pdf = FPDF(orientation="L")
                 pdf.set_auto_page_break(auto=True, margin=15)
                 # Create header page
-                def create_table_page(current_metric, stly_metric, title):
+                def create_table_page(current_metric, stly_metric, title, data_chunk):
                     pdf.add_page()
                     pdf.set_fill_color(selected_color)  # muted beige background
                     pdf.rect(0, 0, REPORT_WIDTH, 35, style='F')
@@ -143,12 +147,32 @@ def render_upload_page():
                     pdf.cell(267, 20, txt=f"{month} {year} - {report_title}", ln=True, align="C")
                     if uploaded_logo:
                         pdf.image(uploaded_logo, x=15, y=5 + ((25 - logo_height)/2), w=25)
-                    table = listing_metric_table(df, current_metric, stly_metric, title)
+                    table = listing_metric_table(data_chunk, current_metric, stly_metric, title)
                     add_img(pdf, table, x=25, y=40, h=165)
 
-                # Testing
-                create_table_page(KEY_REVPAR_INDEX, KEY_REVPAR_INDEX_STLY, "RevPAR Index")
-                create_table_page(KEY_MARKET_PEN, KEY_MARKET_PEN_STLY, "Market Penetration Index")
+                metrics = [
+                    (KEY_REVPAR_INDEX, KEY_REVPAR_INDEX_STLY, "RevPAR Index"),
+                    (KEY_MARKET_PEN, KEY_MARKET_PEN_STLY, "Market Penetration Index"),
+                ]
+
+                def chunk_df(df, max_chunk_size):
+                    n = len(df)
+                    # Number of chunks needed (never exceeding max_chunk_size per chunk)
+                    num_chunks = math.ceil(n / max_chunk_size)
+                    # Compute actual chunk size (may be less than max_chunk_size)
+                    base_chunk_size = n // num_chunks
+                    extras = n % num_chunks  # How many chunks will get an extra row
+
+                    start = 0
+                    for i in range(num_chunks):
+                        # Distribute the remainder among the first 'extras' chunks
+                        chunk_size = base_chunk_size + (1 if i < extras else 0)
+                        yield df.iloc[start:start + chunk_size]
+                        start += chunk_size
+
+                for current_metric, stly_metric, title in metrics:
+                    for chunk in chunk_df(df, 25):
+                        create_table_page(current_metric, stly_metric, title, chunk)
                 
                 # Create individual listing pages
                 for i, row in df.iterrows():

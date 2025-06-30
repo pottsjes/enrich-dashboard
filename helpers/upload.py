@@ -103,9 +103,6 @@ def render_upload_page():
             except:
                 df = pd.read_excel(uploaded_file)
 
-            df = pd.concat([df, df, df])
-            print(f"DataFrame shape: {df.shape}")
-
             if validate_data(df):
                 # Calculations
                 if uploaded_logo:

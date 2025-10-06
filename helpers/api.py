@@ -27,7 +27,6 @@ def download_data(fromDate, toDate, lastModified, filterOption):
             except ValueError:
                 st.error("The API response was not valid JSON.")
             else:
-                st.subheader("API Response")
                 if payload:
                     if filterOption:
                         payload = [r for r in payload if r["marketingSource"] == "legacybeachhomes.com"]

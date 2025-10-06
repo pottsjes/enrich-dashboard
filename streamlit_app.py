@@ -1,5 +1,5 @@
 import streamlit as st
-from helpers.upload import render_upload_page
+from helpers.main import render_main_page
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
@@ -15,4 +15,4 @@ if not st.query_params.get_all("page"):
 
 # -----------------------------------------------------------------------------
 # Draw the actual page
-render_upload_page()
+render_main_page()

@@ -37,15 +37,6 @@ from helpers.utils import (
 )
 
 def render_upload_page():
-    # Set the title that appears at the top of the page.
-    st.image("images/enrich_logo.png")
-    '''
-    # :earth_americas: Enrich Revenue Dashboard
-    '''
-
-    # Add some spacing
-    ''
-    ''
     # Add a form for customer selection and file upload
     with st.form(key="customer_file_form"):
         # selected_customer = st.selectbox(
@@ -225,12 +216,6 @@ def render_upload_page():
 
                 # Save the PDF to a BytesIO object
                 pdf_output = BytesIO(pdf.output(dest="S"))
-
-                # display pdf in streamlit
-                # st.write("### Report Preview")
-                # base64_pdf = base64.b64encode(pdf.output(dest="S")).decode("utf-8")
-                # pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="900" type="application/pdf"></iframe>'
-                # st.components.v1.html(pdf_display, height=900, width=720)
                 
                 @st.fragment
                 def download_link(object_to_download):

@@ -107,10 +107,6 @@ def render_upload_page():
 
                 # Create Charts
                 df[KEY_LABELS] = df[KEY_LISTING_NAME].str[:20] + "..."
-                rpi_thisPeriod = get_diff_percent_bar(df, KEY_LABELS, KEY_REVPAR_INDEX, "RevPAR Index this Period", "RevPAR Index", 1)
-                rpi_stly = get_diff_percent_bar(df, KEY_LABELS, KEY_REVPAR_INDEX_STLY, "RevPar Index STLY", "RevPar Index", 1)
-                mpi_thisPeriod = get_diff_percent_bar(df, KEY_LABELS, KEY_MARKET_PEN, "Market Penetration Index", "MPI", 1)
-                mpi_stly = get_diff_percent_bar(df, KEY_LABELS, KEY_MARKET_PEN_STLY, "Market Penetration Index STLY", "MPI", 1)
     
                 def add_img(pdf, chart, x, y, w = None, h = None):
                     buffer = BytesIO(pio.to_image(chart, format='png'))
@@ -121,12 +117,11 @@ def render_upload_page():
                     elif h:
                         pdf.image(buffer, x=x, y=y, h=h)
 
-                charts = [rpi_thisPeriod, rpi_stly, mpi_thisPeriod, mpi_stly]
                 # Create a PDF document
                 pdf = FPDF(orientation="L")
                 pdf.set_auto_page_break(auto=True, margin=15)
                 # Create header page
-                def create_table_page(current_metric, stly_metric, title, data_chunk):
+                def create_table_page(current_metric, stly_metric, title, description, data_chunk):
                     pdf.add_page()
                     pdf.set_fill_color(selected_color)  # muted beige background
                     pdf.rect(0, 0, REPORT_WIDTH, 35, style='F')
@@ -135,12 +130,22 @@ def render_upload_page():
                     pdf.cell(267, 20, txt=f"{month} {year} - {report_title}", ln=True, align="C")
                     if uploaded_logo:
                         pdf.image(uploaded_logo, x=15, y=5 + ((25 - logo_height)/2), w=25)
-                    table = listing_metric_table(data_chunk, current_metric, stly_metric, title)
+                    table = listing_metric_table(data_chunk, current_metric, stly_metric, title, description)
                     add_img(pdf, table, x=25, y=40, h=165)
 
                 metrics = [
-                    (KEY_REVPAR_INDEX, KEY_REVPAR_INDEX_STLY, "RevPAR Index"),
-                    (KEY_MARKET_PEN, KEY_MARKET_PEN_STLY, "Market Penetration Index"),
+                    (
+                        KEY_REVPAR_INDEX,
+                        KEY_REVPAR_INDEX_STLY,
+                        "Revenue Market Performance",
+                        "Revenue of Listing compared to Market. 1.00 is market average. Comparing same time last year (STLY) performance."
+                    ),
+                    (
+                        KEY_MARKET_PEN,
+                        KEY_MARKET_PEN_STLY,
+                        "Occupancy Market Performance",
+                        "Revenue of Listing compared to Market. 100% is market average. Comparing same time last year (STLY) performance."
+                    ),
                 ]
 
                 def chunk_df(df, max_chunk_size):
@@ -158,9 +163,9 @@ def render_upload_page():
                         yield df.iloc[start:start + chunk_size]
                         start += chunk_size
 
-                for current_metric, stly_metric, title in metrics:
-                    for chunk in chunk_df(df, 25):
-                        create_table_page(current_metric, stly_metric, title, chunk)
+                for current_metric, stly_metric, title, description in metrics:
+                    for chunk in chunk_df(df, 18):
+                        create_table_page(current_metric, stly_metric, title, description, chunk)
                 
                 # Create individual listing pages
                 for i, row in df.iterrows():
@@ -201,9 +206,9 @@ def render_upload_page():
                             value = ''
                         pdf.cell(box_width, box_height, txt=str(value), ln=True, border=1, align="C")
 
-                    draw_kpi(KEY_MARKET_PEN, f"{row[KEY_MARKET_PEN]:.0%}", kpi_box_start_y, 13)
+                    draw_kpi("Occupancy Market Performance", f"{row[KEY_MARKET_PEN]:.0%}", kpi_box_start_y, 11)
                     draw_kpi(KEY_BOOKED_NIGHTS_PICKUP, row[KEY_BOOKED_NIGHTS_PICKUP], kpi_box_start_y + (box_height*2) + box_margin, 11)
-                    draw_kpi(KEY_REVPAR_INDEX, f"{row[KEY_REVPAR_INDEX]:.0%}", kpi_box_start_y + 2*((box_height*2) + box_margin), 15)
+                    draw_kpi("Revenue Market Performance", f"{row[KEY_REVPAR_INDEX]:.0%}", kpi_box_start_y + 2*((box_height*2) + box_margin), 11)
                     # Charts
                     chart_y_start = 60
                     chart_x_spacing = 90
@@ -213,6 +218,13 @@ def render_upload_page():
                         x = 108 + (i % 2) * chart_x_spacing
                         y = chart_y_start + (i // 2) * chart_y_spacing
                         add_img(pdf, fig, x=x, y=y, w=80)
+                    
+
+                    pdf.set_font("Arial", "", 11)
+                    pdf.set_xy(108, 180)
+                    pdf.cell(60, 5, f"STLY - Same Time Last Year", ln=False)
+                    pdf.set_xy(108, 185)
+                    pdf.cell(60, 5, f"RevPAR - Revenue Per Available Room", ln=False)
 
                 # Save the PDF to a BytesIO object
                 pdf_output = BytesIO(pdf.output(dest="S"))

@@ -75,11 +75,11 @@ def get_diff_percent_bar(df: pd.DataFrame, x: str, y: str, title: str, yaxis_tit
     )
     return fig
 
-def listing_metric_table(df, metric_current, metric_stly, title, base=1.0):
+def listing_metric_table(df, metric_current, metric_stly, title, description, base=1.0):
     #sort values in reverse
     df = df.sort_values(by=[metric_current], ignore_index=True, ascending=False)
     df = df[(df[metric_current] != 0.0) | (df[metric_stly] != 0.0)].reset_index(drop=True)
-    font_size = 20 * min(20/ len(df), 1)
+    font_size = 25 * min(20 / len(df), 1)
     
     fig = go.Figure()
     for i, row in df.iterrows():
@@ -149,8 +149,11 @@ def listing_metric_table(df, metric_current, metric_stly, title, base=1.0):
         add_bar(stly_val, -0.3, "STLY")   # STLY metric
 
     fig.update_layout(
-        title=dict(text=title, x=0.5),
+        title=dict(text=title),
         title_font_size=50,
+        title_automargin=True,
+        title_subtitle=dict(text=description),
+        title_subtitle_font_size=30,
         xaxis=dict(showgrid=False, showticklabels=False, zeroline=False, range=[0, 7]),
         yaxis=dict(showgrid=False, showticklabels=False, zeroline=False, range=[-len(df)*2 + 1, 1]),
         height=1600,
@@ -203,7 +206,7 @@ def charts_for_listing(row):
 
     return [
         make_comparison_chart("Total Occupancy", "Current", row[KEY_PAID_OCCUPANCY], "STLY", row[KEY_PAID_OCCUPANCY_STLY], percent=True),
-        make_comparison_chart("Market Occupancy", "Current", row[KEY_MARKET_OCCUPANCY], "STLY", row[KEY_MARKET_OCCUPANCY_STLY], percent=True), 
+        make_comparison_chart("Market Occupancy Compared to Last Year", "Current", row[KEY_MARKET_OCCUPANCY], "STLY", row[KEY_MARKET_OCCUPANCY_STLY], percent=True), 
         make_comparison_chart("Total Revenue", "Current", row[KEY_TOTAL_REVENUE], "STLY", row[KEY_TOTAL_REVENUE_STLY]),
         make_comparison_chart("RevPAR", "Current", row[KEY_RENTAL_REVPAR], "Market", row[KEY_MARKET_REVPAR])
     ]

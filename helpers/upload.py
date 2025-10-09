@@ -144,7 +144,7 @@ def render_upload_page():
                         KEY_MARKET_PEN,
                         KEY_MARKET_PEN_STLY,
                         "Occupancy Market Performance",
-                        "Revenue of Listing compared to Market. 100% is market average. Comparing same time last year (STLY) performance."
+                        "Revenue of Listing compared to Market. 1.00 is market average. Comparing same time last year (STLY) performance."
                     ),
                 ]
 

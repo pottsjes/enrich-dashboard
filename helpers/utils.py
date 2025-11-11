@@ -156,7 +156,7 @@ def listing_metric_table(df, metric_current, metric_stly, title, description, ba
         title_subtitle_font_size=30,
         xaxis=dict(showgrid=False, showticklabels=False, zeroline=False, range=[0, 7]),
         yaxis=dict(showgrid=False, showticklabels=False, zeroline=False, range=[-len(df)*2 + 1, 1]),
-        height=1600,
+        height=min(1600, 1600*(len(df)/3)),
         width=2400
     )
 

@@ -131,7 +131,7 @@ def render_upload_page():
                     if uploaded_logo:
                         pdf.image(uploaded_logo, x=15, y=5 + ((25 - logo_height)/2), w=25)
                     table = listing_metric_table(data_chunk, current_metric, stly_metric, title, description)
-                    add_img(pdf, table, x=25, y=40, h=165)
+                    add_img(pdf, table, x=25, y=40, h=min(165, 165*(len(data_chunk)/3)))
 
                 metrics = [
                     (
@@ -144,7 +144,7 @@ def render_upload_page():
                         KEY_MARKET_PEN,
                         KEY_MARKET_PEN_STLY,
                         "Occupancy Market Performance",
-                        "Revenue of Listing compared to Market. 1.00 is market average. Comparing same time last year (STLY) performance."
+                        "Occupancy of Listing compared to Market. 1.00 is market average. Comparing same time last year (STLY) performance."
                     ),
                 ]
 

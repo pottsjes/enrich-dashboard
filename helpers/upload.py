@@ -90,18 +90,41 @@ def render_upload_page():
         else:
             #Process the uploaded file
             try:
-                df = pd.read_csv(uploaded_file)
+                df = pd.read_csv(uploaded_file, encoding='utf-8-sig')
             except:
                 df = pd.read_excel(uploaded_file)
 
             if validate_data(df):
+                # Clean formatted values (strip $, %, commas, convert to numeric)
+                def _clean_col(series):
+                    s = series.astype(str).str.strip()
+                    s = s.replace({"N/A": None, "NA": None, "": None, "-": None})
+                    s = s.str.replace("$", "", regex=False)
+                    s = s.str.replace(",", "", regex=False)
+                    is_pct = s.str.endswith("%")
+                    s = s.str.rstrip("%").str.strip()
+                    result = pd.to_numeric(s, errors="coerce")
+                    result[is_pct] = result[is_pct] / 100.0
+                    return result
+
+                # Clean all numeric columns used in calculations/charts
+                numeric_cols = [
+                    KEY_REVPAR_INDEX, KEY_RENTAL_REVPAR, KEY_RENTAL_REVPAR_STLY,
+                    KEY_MARKET_REVPAR, KEY_MARKET_REVPAR_STLY, KEY_MARKET_PEN,
+                    KEY_PAID_OCCUPANCY, KEY_PAID_OCCUPANCY_STLY,
+                    KEY_MARKET_OCCUPANCY, KEY_MARKET_OCCUPANCY_STLY,
+                    KEY_TOTAL_REVENUE, KEY_TOTAL_REVENUE_STLY,
+                    KEY_BOOKED_NIGHTS_PICKUP,
+                ]
+                for col in numeric_cols:
+                    if col in df.columns:
+                        df[col] = _clean_col(df[col])
+
                 # Calculations
                 if uploaded_logo:
                     logo_image = Image.open(uploaded_logo)
                     logo_width, logo_height = logo_image.size
                     logo_height = logo_height * (25 / logo_width)  # Scale height to fit in the header
-                df[KEY_REVPAR_INDEX] = df[KEY_REVPAR_INDEX] / 100
-                df[KEY_MARKET_PEN] = df[KEY_MARKET_PEN] / 100
                 df[KEY_REVPAR_INDEX_STLY] = df[KEY_RENTAL_REVPAR_STLY] / df[KEY_MARKET_REVPAR_STLY]
                 df[KEY_MARKET_PEN_STLY] = df[KEY_PAID_OCCUPANCY_STLY] / df[KEY_MARKET_OCCUPANCY_STLY]
 

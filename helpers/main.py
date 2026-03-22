@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from helpers.upload import render_upload_page
 from helpers.api import render_api_page
+from helpers.agent_page import render_agent_page
 
 def render_main_page():
     # Set the title that appears at the top of the page.
@@ -14,8 +15,10 @@ def render_main_page():
     # Add some spacing
     ''
     ''
-    reportTab, apiTab = st.tabs(["Report", "API"])
+    reportTab, agentTab, apiTab = st.tabs(["Report", "AI Analysis", "API"])
     with reportTab:
         render_upload_page()
-    with apiTab:
-        render_api_page()
+    with agentTab:
+        render_agent_page()
+    # with apiTab:
+        # render_api_page()

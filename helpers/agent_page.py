@@ -92,9 +92,14 @@ def _render_pipeline_section():
 
         # Shared state for thread communication
         progress = {"status": "Starting...", "done": False, "error": None, "results": []}
+        is_batch = st.session_state["batch_mode"]
+        current_file = {"name": ""}
 
         def on_status(msg: str):
-            progress["status"] = msg
+            if is_batch and current_file["name"]:
+                progress["status"] = f"[{current_file['name']}] {msg}"
+            else:
+                progress["status"] = msg
 
         def run_in_thread():
             try:
@@ -102,7 +107,8 @@ def _render_pipeline_section():
                     if st.session_state.get("pipeline_cancelled"):
                         progress["error"] = "Pipeline cancelled by user."
                         return
-                    progress["status"] = f"Processing {csv_name}..."
+                    current_file["name"] = csv_name
+                    on_status(f"Starting...")
                     pdf_bytes, analysis, anomaly_report, rec_report = run_pipeline(
                         csv_path=csv_path,
                         client_id=client_id,

@@ -67,7 +67,6 @@ def call(
                     system=full_system,
                     messages=[{"role": "user", "content": msg}],
                 )
-                print(f'[REQUEST_ID]: {response._request_id}')  # TODO: remove this before pushing
                 raw = response.content[0].text.strip()
                 if raw.startswith("```"):
                     lines = raw.split("\n")

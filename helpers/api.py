@@ -65,9 +65,10 @@ def render_api_page():
         help="Check this box to filter results to only include LegacyBeachHomes bookings.",
     )
 
-    if download_link(fromDate, toDate, lastModified, filterOption):
-        st.success("Report downloaded successfully.")
-        
+    dev_machine = os.getenv("DEV_MACHINE", False)
+    if not dev_machine and download_link(fromDate, toDate, lastModified, filterOption):
+            st.success("Report downloaded successfully.")
+
 
 @st.fragment
 def download_link(fromDate, toDate, lastModified, filterOption):

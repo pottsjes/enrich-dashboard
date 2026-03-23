@@ -7,10 +7,7 @@ import os
 from typing import TypeVar
 
 import anthropic
-from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
-
-load_dotenv()
 
 SONNET = "claude-sonnet-4-6"
 HAIKU = "claude-haiku-4-5-20251001"

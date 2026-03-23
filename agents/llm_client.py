@@ -59,21 +59,30 @@ def call(
     client = _get_client()
 
     def _attempt(msg: str) -> T:
-        response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=full_system,
-            messages=[{"role": "user", "content": msg}],
-        )
-        raw = response.content[0].text.strip()
-        # Strip markdown fences if present
-        if raw.startswith("```"):
-            lines = raw.split("\n")
-            lines = lines[1:]  # remove opening fence
-            if lines and lines[-1].strip() == "```":
-                lines = lines[:-1]
-            raw = "\n".join(lines)
-        return output_schema.model_validate_json(raw)
+        for attempt in range(4):  # up to 3 retries
+            try:
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    system=full_system,
+                    messages=[{"role": "user", "content": msg}],
+                )
+                print(f'[REQUEST_ID]: {response._request_id}')  # TODO: remove this before pushing
+                raw = response.content[0].text.strip()
+                if raw.startswith("```"):
+                    lines = raw.split("\n")
+                    lines = lines[1:]
+                    if lines and lines[-1].strip() == "```":
+                        lines = lines[:-1]
+                    raw = "\n".join(lines)
+                return output_schema.model_validate_json(raw)
+            except anthropic.APIStatusError as e:
+                if e.status_code in (429, 529) and attempt < 3:
+                    wait = (2 ** attempt) * 2  # 2s, 4s, 8s
+                    import time
+                    time.sleep(wait)
+                    continue
+                raise
 
     try:
         return _attempt(user_message)

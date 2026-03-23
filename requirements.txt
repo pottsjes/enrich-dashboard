@@ -8,3 +8,4 @@ requests
 anthropic
 python-dotenv
 pydantic>=2.0
+BytesIO

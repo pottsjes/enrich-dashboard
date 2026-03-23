@@ -15,9 +15,6 @@ def render_main_page():
     # :earth_americas: Enrich Revenue Dashboard
     '''
 
-    # Add some spacing
-    ''
-    ''
     reportTab, agentTab, apiTab = st.tabs(["Report", "AI Analysis", "API"])
     with reportTab:
         render_upload_page()

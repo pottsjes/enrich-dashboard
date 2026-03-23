@@ -20,5 +20,5 @@ def render_main_page():
         render_upload_page()
     with agentTab:
         render_agent_page()
-    # with apiTab:
-        # render_api_page()
+    with apiTab:
+        render_api_page()

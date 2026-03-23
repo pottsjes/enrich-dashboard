@@ -1,7 +1,10 @@
-"""Pipeline orchestrator — coordinates the multi-agent analysis flow."""
+"""Pipeline orchestrator — single and concurrent multi-CSV execution."""
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import Callable
 
 from agents.data_analyst import DataAnalystAgent
@@ -10,83 +13,189 @@ from agents.recommendation import RecommendationAgent
 from agents.eval import EvalAgent
 from agents.report_composer import ReportComposerAgent
 from models.schemas import AnalysisResult, AnomalyReport, RecommendationReport
-# from storage.local import LocalStorage
 
 
-def _noop(msg: str) -> None:
-    pass
+class Step(IntEnum):
+    ANALYZE = 0
+    ANOMALIES = 1
+    RECOMMENDATIONS = 2
+    EVAL = 3
+    COMPOSE = 4
+    DONE = 5
+
+STEP_LABELS = {
+    Step.ANALYZE: "Analyzing data...",
+    Step.ANOMALIES: "Detecting anomalies...",
+    Step.RECOMMENDATIONS: "Generating recommendations...",
+    Step.EVAL: "Evaluating quality...",
+    Step.COMPOSE: "Composing report...",
+    Step.DONE: "Complete",
+}
+
+STEP_PROGRESS = {
+    Step.ANALYZE: 5,
+    Step.ANOMALIES: 20,
+    Step.RECOMMENDATIONS: 45,
+    Step.EVAL: 65,
+    Step.COMPOSE: 80,
+    Step.DONE: 100,
+}
 
 
-def run_pipeline(
+@dataclass
+class PipelineResult:
+    """Result of a single pipeline run."""
+    pdf_bytes: bytes
+    analysis: AnalysisResult
+    anomaly_report: AnomalyReport
+    rec_report: RecommendationReport
+
+
+@dataclass
+class PipelineJob:
+    """State machine for a single CSV's pipeline progression."""
+    name: str
+    csv_path: str
+    report_title: str
+    month: str
+    year: str
+    logo_path: str | None = None
+    brand_color: str = "#d4cfcf"
+
+    # State
+    step: Step = Step.ANALYZE
+    error: str | None = None
+    analysis: AnalysisResult | None = None
+    anomaly_report: AnomalyReport | None = None
+    rec_report: RecommendationReport | None = None
+    eval_passed: bool = False
+    retried: bool = False
+    pdf_bytes: bytes | None = None
+
+    @property
+    def is_done(self) -> bool:
+        return self.step == Step.DONE or self.error is not None
+
+    @property
+    def progress_pct(self) -> int:
+        return STEP_PROGRESS.get(self.step, 0)
+
+    @property
+    def status_text(self) -> str:
+        if self.error:
+            return f"Failed: {self.error}"
+        return STEP_LABELS.get(self.step, "Unknown")
+
+    def run_current_step(self) -> None:
+        """Execute the current step and advance to the next."""
+        try:
+            if self.step == Step.ANALYZE:
+                self.analysis = DataAnalystAgent().analyze(
+                    self.csv_path, month=self.month, year=self.year
+                )
+                self.step = Step.ANOMALIES
+
+            elif self.step == Step.ANOMALIES:
+                self.anomaly_report = AnomalyDetectionAgent().detect(
+                    self.analysis, history=None
+                )
+                self.step = Step.RECOMMENDATIONS
+
+            elif self.step == Step.RECOMMENDATIONS:
+                self.rec_report = RecommendationAgent().recommend(
+                    self.analysis, self.anomaly_report,
+                    feedback=None if not self.retried else self._eval_feedback,
+                )
+                self.step = Step.EVAL
+
+            elif self.step == Step.EVAL:
+                eval_result = EvalAgent().evaluate(self.rec_report)
+                if eval_result.passed or self.retried:
+                    self.eval_passed = eval_result.passed
+                    self.step = Step.COMPOSE
+                else:
+                    # Retry recommendations once
+                    self.retried = True
+                    self._eval_feedback = eval_result.feedback
+                    self.step = Step.RECOMMENDATIONS
+
+            elif self.step == Step.COMPOSE:
+                _, self.pdf_bytes = ReportComposerAgent().compose(
+                    self.analysis, self.anomaly_report, self.rec_report,
+                    self.report_title, self.month, self.year,
+                    self.logo_path, self.brand_color,
+                )
+                self.step = Step.DONE
+
+        except Exception as e:
+            self.error = str(e)
+
+    def to_result(self) -> PipelineResult | None:
+        if self.pdf_bytes is None:
+            return None
+        return PipelineResult(
+            pdf_bytes=self.pdf_bytes,
+            analysis=self.analysis,
+            anomaly_report=self.anomaly_report,
+            rec_report=self.rec_report,
+        )
+
+
+def run_single(
     csv_path: str,
-    client_id: str,
     report_title: str,
     month: str,
     year: str,
     logo_path: str | None = None,
     brand_color: str = "#d4cfcf",
-    on_status_update: Callable[[str], None] | None = None,
+    on_status: Callable[[str], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
-) -> tuple[bytes, AnalysisResult, AnomalyReport, RecommendationReport]:
-    """Run the full analysis pipeline synchronously.
-
-    Returns (pdf_bytes, analysis, anomaly_report, recommendation_report).
-    """
-    status = on_status_update or _noop
+) -> PipelineResult:
+    """Run pipeline for a single CSV synchronously."""
+    _status = on_status or (lambda m: None)
     _cancelled = cancel_check or (lambda: False)
 
-    def _check():
+    job = PipelineJob(
+        name="single",
+        csv_path=csv_path,
+        report_title=report_title,
+        month=month,
+        year=year,
+        logo_path=logo_path,
+        brand_color=brand_color,
+    )
+    while not job.is_done:
         if _cancelled():
             raise RuntimeError("Pipeline cancelled by user.")
+        _status(job.status_text)
+        job.run_current_step()
 
-    # Step 1: Data analysis (pure Python)
-    status("Analyzing data...")
-    _check()
-    data_analyst = DataAnalystAgent()
-    analysis = data_analyst.analyze(csv_path, month=month, year=year)
+    if job.error:
+        raise RuntimeError(job.error)
+    _status("Complete")
+    return job.to_result()
 
-    # Step 2: Load history
-    history = None
 
-    # Step 3: Anomaly detection (LLM)
-    status("Detecting anomalies...")
-    _check()
-    anomaly_agent = AnomalyDetectionAgent()
-    anomaly_report = anomaly_agent.detect(analysis, history)
+def run_batch(
+    jobs: list[PipelineJob],
+    max_workers: int | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+) -> None:
+    """Run multiple pipeline jobs concurrently.
 
-    # Step 4: Recommendations (LLM)
-    status("Generating recommendations...")
-    _check()
-    rec_agent = RecommendationAgent()
-    rec_report = rec_agent.recommend(analysis, anomaly_report)
+    Jobs advance independently — fast jobs don't wait for slow ones.
+    """
+    _cancelled = cancel_check or (lambda: False)
 
-    # Step 5: Eval (LLM - Haiku)
-    status("Evaluating quality...")
-    _check()
-    eval_agent = EvalAgent()
-    eval_result = eval_agent.evaluate(rec_report)
+    def _run_job(job: PipelineJob):
+        """Run a single job through all its steps."""
+        while not job.is_done:
+            if _cancelled():
+                job.error = "Pipeline cancelled by user."
+                return
+            job.run_current_step()
 
-    # Step 6: Retry if eval fails
-    if not eval_result.passed:
-        status("Improving recommendations...")
-        _check()
-        rec_report = rec_agent.recommend(
-            analysis, anomaly_report, feedback=eval_result.feedback
-        )
-        eval_result = eval_agent.evaluate(rec_report)
-        if not eval_result.passed:
-            status(f"Proceeding with current recommendations (eval score: {eval_result.score:.2f})")
-
-    # Step 7: Compose report (LLM + PDF)
-    status("Composing report...")
-    _check()
-    composer = ReportComposerAgent()
-    report_content, pdf_bytes = composer.compose(
-        analysis, anomaly_report, rec_report,
-        report_title, month, year, logo_path, brand_color,
-    )
-
-    # Step 8: Save results
-    # storage.save_analysis(client_id, analysis)
-
-    return pdf_bytes, analysis, anomaly_report, rec_report
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(_run_job, j): j for j in jobs}
+        for f in as_completed(futures):
+            pass  # errors captured inside run_current_step

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import threading
+import time
 from typing import TypeVar
 
 import anthropic
@@ -15,6 +17,25 @@ HAIKU = "claude-haiku-4-5-20251001"
 T = TypeVar("T", bound=BaseModel)
 
 _client: anthropic.Anthropic | None = None
+
+# Simple rate limiter: max N requests per minute, thread-safe
+_rate_lock = threading.Lock()
+_request_times: list[float] = []
+_MAX_RPM = 40  # stay under the 50/min limit with headroom
+
+
+def _wait_for_rate_limit():
+    """Block until we're under the rate limit."""
+    with _rate_lock:
+        now = time.time()
+        # Prune timestamps older than 60s
+        _request_times[:] = [t for t in _request_times if now - t < 60]
+        if len(_request_times) >= _MAX_RPM:
+            # Wait until the oldest request falls outside the window
+            sleep_time = 60 - (now - _request_times[0]) + 0.1
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+        _request_times.append(time.time())
 
 
 def _get_client() -> anthropic.Anthropic:
@@ -61,6 +82,7 @@ def call(
     def _attempt(msg: str) -> T:
         for attempt in range(4):  # up to 3 retries
             try:
+                _wait_for_rate_limit()
                 response = client.messages.create(
                     model=model,
                     max_tokens=max_tokens,
@@ -108,6 +130,7 @@ def call_streaming(
 ):
     """Stream a plain-text response from the Anthropic API. Yields text chunks."""
     client = _get_client()
+    _wait_for_rate_limit()
     with client.messages.stream(
         model=model,
         max_tokens=max_tokens,

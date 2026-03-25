@@ -117,7 +117,10 @@ class DataAnalystAgent:
     """Transforms raw PriceLabs CSV into structured AnalysisResult. No LLM needed."""
 
     def analyze(self, csv_path: str, month: str = "", year: str = "") -> AnalysisResult:
-        df = pd.read_csv(csv_path, encoding="utf-8-sig")
+        try:
+            df = pd.read_csv(csv_path, encoding="utf-8-sig")
+        except Exception:
+            df = pd.read_excel(csv_path)
         listings = []
         for _, row in df.iterrows():
             kwargs = {}

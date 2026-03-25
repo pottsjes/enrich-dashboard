@@ -107,7 +107,8 @@ def _render_pipeline_section():
         # Save uploads to temp files
         csv_temps = []
         for name, data in csv_files_data:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+            ext = os.path.splitext(name)[1] or ".csv"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
                 tmp.write(data)
                 csv_temps.append((name, tmp.name))
 

@@ -72,7 +72,13 @@ class ReportComposerAgent:
         logo_path: str | None = None,
         brand_color: str = "#d4cfcf",
     ) -> tuple[ReportContent, bytes]:
-        content = self._generate_narratives(analysis, anomaly_report, rec_report)
+        # Skip LLM narratives — use empty placeholders
+        content = ReportContent(
+            executive_summary="",
+            listing_narratives=[],
+            anomaly_summary="",
+            recommendations_summary="",
+        )
         pdf_bytes = self._build_pdf(
             content, analysis, anomaly_report, rec_report,
             report_title, month, year, logo_path, brand_color,

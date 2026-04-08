@@ -112,6 +112,13 @@ def _render_pipeline_section():
                 tmp.write(data)
                 csv_temps.append((name, tmp.name))
 
+        # If single file with a Tag column, split into batches by first tag
+        # if len(csv_temps) == 1:
+        #     csv_temps = _maybe_split_by_tag(csv_temps[0])
+        #     if len(csv_temps) > 1:
+        #         is_batch = True
+        #         st.session_state["batch_mode"] = True
+
         logo_path = None
         if pending["logo_bytes"]:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_logo:
@@ -252,6 +259,47 @@ def _cleanup(csv_temps: list[tuple[str, str]], logo_path: str | None):
             os.unlink(path)
     if logo_path and os.path.exists(logo_path):
         os.unlink(logo_path)
+
+
+def _maybe_split_by_tag(
+    csv_temp: tuple[str, str],
+) -> list[tuple[str, str]]:
+    """If the file has a 'Tag Name' column, split into separate temp files
+    grouped by the first tag value. Returns the original if no tag column."""
+    name, path = csv_temp
+    try:
+        try:
+            df = pd.read_csv(path, encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            df = pd.read_csv(path, encoding="latin-1")
+        except Exception:
+            df = pd.read_excel(path)
+    except Exception:
+        return [csv_temp]
+
+    if "Tag Name" not in df.columns:
+        return [csv_temp]
+
+    # Extract first tag from comma-separated list
+    df["_first_tag"] = df["Tag Name"].astype(str).str.split(",").str[0].str.strip()
+
+    result = []
+    for tag, group in df.groupby("_first_tag"):
+        tag_clean = str(tag).strip()
+        if not tag_clean or tag_clean.lower() == "nan":
+            tag_clean = "untagged"
+        group = group.drop(columns=["_first_tag"])
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".csv", mode="w", newline=""
+        ) as tmp:
+            group.to_csv(tmp, index=False)
+            result.append((tag_clean, tmp.name))
+
+    # Clean up original temp file
+    if os.path.exists(path):
+        os.unlink(path)
+
+    return result if result else [csv_temp]
 
 
 def _show_single_results(result: PipelineResult, name: str):

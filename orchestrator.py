@@ -93,31 +93,10 @@ class PipelineJob:
                 self.analysis = DataAnalystAgent().analyze(
                     self.csv_path, month=self.month, year=self.year
                 )
-                self.step = Step.ANOMALIES
-
-            elif self.step == Step.ANOMALIES:
-                self.anomaly_report = AnomalyDetectionAgent().detect(
-                    self.analysis, history=None
-                )
-                self.step = Step.RECOMMENDATIONS
-
-            elif self.step == Step.RECOMMENDATIONS:
-                self.rec_report = RecommendationAgent().recommend(
-                    self.analysis, self.anomaly_report,
-                    feedback=None if not self.retried else self._eval_feedback,
-                )
-                self.step = Step.EVAL
-
-            elif self.step == Step.EVAL:
-                eval_result = EvalAgent().evaluate(self.rec_report)
-                if eval_result.passed or self.retried:
-                    self.eval_passed = eval_result.passed
-                    self.step = Step.COMPOSE
-                else:
-                    # Retry recommendations once
-                    self.retried = True
-                    self._eval_feedback = eval_result.feedback
-                    self.step = Step.RECOMMENDATIONS
+                # Skip LLM steps — go straight to compose
+                self.anomaly_report = AnomalyReport(anomalies=[], summary="")
+                self.rec_report = RecommendationReport(recommendations=[], summary="")
+                self.step = Step.COMPOSE
 
             elif self.step == Step.COMPOSE:
                 _, self.pdf_bytes = ReportComposerAgent().compose(

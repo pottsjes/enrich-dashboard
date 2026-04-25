@@ -20,9 +20,7 @@ def _clean_value(val, as_type: str = "float"):
     if s.upper() in ("N/A", "NA", "", "-"):
         return None
 
-    # Dollar values
     s = s.replace("$", "").replace(",", "").strip()
-    # Percentage values
     is_pct = s.endswith("%")
     if is_pct:
         s = s.rstrip("%").strip()
@@ -53,64 +51,74 @@ def _safe_str(val) -> str:
 
 
 # Column name mapping: Pydantic field -> CSV column name
+# Commented entries are preserved for future AI/LLM integration.
 _COL_MAP = {
     "listing_name": "Listing Name",
-    "listing_id": "Listing ID",
-    "city": "City Name",
-    "bedroom_count": "Bedroom count category",
+    # Occupancy
     "occupancy_pct": "Occupancy %",
     "occupancy_stly": "Occupancy % STLY",
-    "occupancy_yoy_diff": "Occupancy YoY Difference",
     "market_occupancy_pct": "Market Occupancy %",
     "market_occupancy_stly": "Market Occupancy % STLY",
     "market_penetration_index": "Market Penetration Index %",
     "paid_occupancy_pct": "Paid Occupancy %",
     "paid_occupancy_stly": "Paid Occupancy % STLY",
-    "weekend_occupancy_pct": "Weekend Occupancy %",
-    "weekday_occupancy_pct": "Weekday Occupancy %",
+    # "weekend_occupancy_pct": "Weekend Occupancy %",
+    # "weekday_occupancy_pct": "Weekday Occupancy %",
+    # Revenue
     "rental_revenue": "Rental Revenue",
     "rental_revenue_stly": "Rental Revenue STLY",
-    "rental_revenue_yoy_pct": "Rental Revenue YoY %",
     "total_revenue": "Total Revenue",
     "total_revenue_stly": "Total Revenue STLY",
-    "total_revenue_yoy_pct": "Total Revenue YoY %",
+    # ADR
     "rental_adr": "Rental ADR",
     "rental_adr_stly": "Rental ADR STLY",
-    "market_adr": "Market ADR",
     "adr_index": "ADR Index",
+    # "market_adr": "Market ADR",
+    # RevPAR
     "rental_revpar": "Rental RevPAR",
     "rental_revpar_stly": "Rental RevPAR STLY",
     "market_revpar": "Market RevPAR",
+    "market_revpar_stly": "Market RevPAR STLY",
     "revpar_index": "RevPAR Index",
-    "base_price": "Base Price",
-    "recommended_base_price": "Recommended Base Price",
-    "final_price": "Final Price",
-    "market_median_price": "Market Median Price",
-    "market_75th_percentile_price": "Market 75th Percentile Price",
-    "booked_nights": "Booked Nights",
+    # Pricing context
+    # "base_price": "Base Price",
+    # "recommended_base_price": "Recommended Base Price",
+    # "final_price": "Final Price",
+    # "market_median_price": "Market Median Price",
+    # "market_75th_percentile_price": "Market 75th Percentile Price",
+    # Booking dynamics
     "available_nights": "Available Nights",
-    "blocked_nights": "Blocked Nights",
     "number_of_bookings": "Number of Bookings",
     "avg_booking_window": "Average Booking Window",
     "market_avg_booking_window": "Average Market Booking Window",
-    "avg_los": "Average LOS",
-    "booked_nights_pickup_30d": "Booked Nights Pickup (30 Days)",
-    "occupancy_pickup_30d": "Occupancy Pickup (30 Days)",
-    "occupancy_pickup_stly_30d": "Occupancy Pickup STLY (30 Days)",
-    "revenue_pickup_30d": "Rental Revenue Pickup (30 Days)",
-    "revenue_pickup_stly_30d": "Rental Revenue Pickup STLY (30 Days)",
-    "events_count": "Events Count",
-    "events_names": "Events Name",
+    # "booked_nights": "Booked Nights",
+    # "blocked_nights": "Blocked Nights",
+    # "avg_los": "Average LOS",
+    # "booked_nights_pickup_30d": "Booked Nights Pickup (30 Days)",
+    # New metrics used in per-listing KPI grid
+    "paid_occupancy_pickup_30d": "Paid Occupancy Pickup (30 Days)",
+    "market_occupancy_pickup_30d": "Market Occupancy Pickup (30 Days)",
+    "rental_revpar_pickup_30d": "Rental RevPAR Pickup (30 Days)",
+    "market_revpar_pickup_30d": "Market RevPAR Pickup (30 Days)",
+    "bookable_nights": "Bookable Nights",
+    "bookable_nights_ly": "Bookable Nights LY",
+    "unbookable_revenue_potential": "Unbookable Dates Potential Revenue (Final Price)",
+    "median_booking_window": "Median Booking Window",
+    # Pickup (for AI timing recs)
+    # "occupancy_pickup_30d": "Occupancy Pickup (30 Days)",
+    # "occupancy_pickup_stly_30d": "Occupancy Pickup STLY (30 Days)",
+    # "revenue_pickup_30d": "Rental Revenue Pickup (30 Days)",
+    # "revenue_pickup_stly_30d": "Rental Revenue Pickup STLY (30 Days)",
 }
 
 # Fields that are integers
 _INT_FIELDS = {
-    "booked_nights", "available_nights", "blocked_nights",
-    "number_of_bookings", "events_count",
+    "available_nights", "number_of_bookings",
+    "bookable_nights", "bookable_nights_ly",
 }
 
 # Fields that are strings (not cleaned as numbers)
-_STR_FIELDS = {"listing_name", "listing_id", "city", "bedroom_count", "events_names"}
+_STR_FIELDS = {"listing_name"}
 
 
 class DataAnalystAgent:
@@ -124,6 +132,7 @@ class DataAnalystAgent:
                 df = pd.read_csv(csv_path, encoding="utf-8-sig")
             except UnicodeDecodeError:
                 df = pd.read_csv(csv_path, encoding="latin-1")
+
         listings = []
         for _, row in df.iterrows():
             kwargs = {}
@@ -154,7 +163,6 @@ class DataAnalystAgent:
             report_date = f"{year}-{month_num}-01"
         else:
             report_date = date.today().isoformat()
-            listings.append(ListingMetrics(**kwargs))
 
         summary = self._compute_summary(listings)
         return AnalysisResult(
@@ -182,7 +190,6 @@ class DataAnalystAgent:
         avg_mpi = _avg([l.market_penetration_index for l in listings])
         avg_adr_idx = _avg([l.adr_index for l in listings])
 
-        # Top/bottom by RevPAR Index (fallback to rental_revpar)
         scored = [
             (l.listing_name, l.revpar_index if l.revpar_index is not None else 0.0)
             for l in listings

@@ -10,60 +10,61 @@ from pydantic import BaseModel
 class ListingMetrics(BaseModel):
     """Condensed metrics for a single listing — computed by DataAnalystAgent from raw CSV."""
     listing_name: str
-    listing_id: str
-    city: str
-    bedroom_count: str | None = None
     # Occupancy
     occupancy_pct: float | None = None
     occupancy_stly: float | None = None
-    occupancy_yoy_diff: float | None = None
     market_occupancy_pct: float | None = None
     market_penetration_index: float | None = None
     paid_occupancy_pct: float | None = None
-    weekend_occupancy_pct: float | None = None
-    weekday_occupancy_pct: float | None = None
     market_occupancy_stly: float | None = None
     paid_occupancy_stly: float | None = None
+    # weekend_occupancy_pct: float | None = None  # for AI day-of-week pricing recs
+    # weekday_occupancy_pct: float | None = None  # for AI day-of-week pricing recs
     # Revenue
     rental_revenue: float | None = None
     rental_revenue_stly: float | None = None
-    rental_revenue_yoy_pct: float | None = None
     total_revenue: float | None = None
     total_revenue_stly: float | None = None
-    total_revenue_yoy_pct: float | None = None
     # ADR
     rental_adr: float | None = None
     rental_adr_stly: float | None = None
-    market_adr: float | None = None
     adr_index: float | None = None
+    # market_adr: float | None = None  # for AI pricing context
     # RevPAR
     rental_revpar: float | None = None
     rental_revpar_stly: float | None = None
     market_revpar: float | None = None
+    market_revpar_stly: float | None = None
     revpar_index: float | None = None
-    # Pricing context
-    base_price: float | None = None
-    recommended_base_price: float | None = None
-    final_price: float | None = None
-    market_median_price: float | None = None
-    market_75th_percentile_price: float | None = None
+    # Pricing context (all commented for future AI use)
+    # base_price: float | None = None
+    # recommended_base_price: float | None = None
+    # final_price: float | None = None
+    # market_median_price: float | None = None
+    # market_75th_percentile_price: float | None = None
     # Booking dynamics
-    booked_nights: int | None = None
     available_nights: int | None = None
-    blocked_nights: int | None = None
     number_of_bookings: int | None = None
     avg_booking_window: float | None = None
     market_avg_booking_window: float | None = None
-    avg_los: float | None = None
-    booked_nights_pickup_30d: float | None = None
-    # Pickup (30-day window)
-    occupancy_pickup_30d: float | None = None
-    occupancy_pickup_stly_30d: float | None = None
-    revenue_pickup_30d: float | None = None
-    revenue_pickup_stly_30d: float | None = None
-    # Events
-    events_count: int | None = None
-    events_names: str | None = None
+    # booked_nights: int | None = None      # for AI booking context
+    # blocked_nights: int | None = None     # for AI booking context
+    # avg_los: float | None = None          # for AI booking context
+    # booked_nights_pickup_30d: float | None = None  # for AI pickup/timing recs
+    # New metrics
+    paid_occupancy_pickup_30d: float | None = None
+    market_occupancy_pickup_30d: float | None = None
+    rental_revpar_pickup_30d: float | None = None
+    market_revpar_pickup_30d: float | None = None
+    bookable_nights: int | None = None
+    bookable_nights_ly: int | None = None
+    unbookable_revenue_potential: float | None = None
+    median_booking_window: float | None = None
+    # Pickup (30-day window) — for AI timing recs
+    # occupancy_pickup_30d: float | None = None
+    # occupancy_pickup_stly_30d: float | None = None
+    # revenue_pickup_30d: float | None = None
+    # revenue_pickup_stly_30d: float | None = None
 
 
 class PortfolioSummary(BaseModel):

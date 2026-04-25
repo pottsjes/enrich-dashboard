@@ -113,11 +113,11 @@ def _render_pipeline_section():
                 csv_temps.append((name, tmp.name))
 
         # If single file with a Tag column, split into batches by first tag
-        # if len(csv_temps) == 1:
-        #     csv_temps = _maybe_split_by_tag(csv_temps[0])
-        #     if len(csv_temps) > 1:
-        #         is_batch = True
-        #         st.session_state["batch_mode"] = True
+        if len(csv_temps) == 1:
+            csv_temps = _maybe_split_by_tag(csv_temps[0])
+            if len(csv_temps) > 1:
+                is_batch = True
+                st.session_state["batch_mode"] = True
 
         logo_path = None
         if pending["logo_bytes"]:
@@ -231,7 +231,7 @@ def _render_pipeline_section():
                 zip_buffer = BytesIO()
                 with zipfile.ZipFile(zip_buffer, "w") as zf:
                     for job in results:
-                        zf.writestr(f"{job.name}_ai_report.pdf", job.pdf_bytes)
+                        zf.writestr(f"{job.name}_report.pdf", job.pdf_bytes)
                 st.session_state["batch_zip"] = zip_buffer.getvalue()
             st.session_state["pipeline_running"] = False
 
@@ -346,7 +346,7 @@ def _show_single_results(result: PipelineResult, name: str):
     st.download_button(
         label="Download AI Report PDF",
         data=result.pdf_bytes,
-        file_name=f"{name}_ai_report.pdf",
+        file_name=f"{name}_report.pdf",
         mime="application/pdf",
     )
 

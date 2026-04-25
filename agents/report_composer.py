@@ -156,62 +156,62 @@ class ReportComposerAgent:
             if logo_path:
                 pdf.image(logo_path, x=15, y=8, w=50)
             if title_text:
-                pdf.set_xy(15, 37)
+                pdf.set_xy(5, 33)
                 pdf.set_font("Arial", "B", 14)
                 pdf.cell(267, 10, txt=_sanitize(title_text))
 
-        # Page 1: Executive Summary + Portfolio KPIs
-        pdf.add_page()
-        _header("Executive Summary")
-        pdf.set_xy(15, CONTENT_TOP)
-        pdf.set_font("Arial", "", 10)
-        pdf.set_text_color(0, 0, 0)
-        pdf.multi_cell(267, 5, _sanitize(content.executive_summary))
+        # # Page 1: Executive Summary + Portfolio KPIs
+        # pdf.add_page()
+        # _header("Executive Summary")
+        # pdf.set_xy(15, CONTENT_TOP)
+        # pdf.set_font("Arial", "", 10)
+        # pdf.set_text_color(0, 0, 0)
+        # pdf.multi_cell(267, 5, _sanitize(content.executive_summary))
 
-        # KPIs below the summary text
-        ps = analysis.portfolio_summary
-        kpis = [
-            ("Total Revenue", f"${ps.total_revenue:,.0f}"),
-            ("Revenue STLY", f"${ps.total_revenue_stly:,.0f}"),
-            ("Avg Occupancy", f"{ps.avg_occupancy:.1%}"),
-            ("Avg Occupancy STLY", f"{ps.avg_occupancy_stly:.1%}"),
-            ("Avg RevPAR", f"${ps.avg_revpar:,.2f}"),
-            ("Avg ADR Index", f"{ps.avg_adr_index:.2f}"),
-            ("Avg Market Penetration", f"{ps.avg_market_penetration:.1%}"),
-            ("Above Market", str(ps.listings_above_market)),
-            ("Below Market", str(ps.listings_below_market)),
-        ]
-        col_x = 15
-        cell_w = 42  # each cell width (label + value = 84 per column)
-        pair_w = cell_w * 2  # 84mm per label+value pair
-        total_pairs_w = pair_w * 3  # 204mm for all pairs
-        gap = (267 - total_pairs_w) / 2  # distribute remaining space as gaps
-        col_spacing = pair_w + gap
-        row_y = min(pdf.get_y() + 4, 130)
-        for i, (label, value) in enumerate(kpis):
-            x = col_x + (i % 3) * col_spacing
-            y = row_y + (i // 3) * 18
-            pdf.set_xy(x, y)
-            pdf.set_font("Arial", "B", 10)
-            pdf.cell(cell_w, 8, label, border=1, align="C")
-            pdf.set_font("Arial", "", 10)
-            pdf.cell(cell_w, 8, _sanitize(value), border=1, align="C")
+        # # KPIs below the summary text
+        # ps = analysis.portfolio_summary
+        # kpis = [
+        #     ("Total Revenue", f"${ps.total_revenue:,.0f}"),
+        #     ("Revenue STLY", f"${ps.total_revenue_stly:,.0f}"),
+        #     ("Avg Occupancy", f"{ps.avg_occupancy:.1%}"),
+        #     ("Avg Occupancy STLY", f"{ps.avg_occupancy_stly:.1%}"),
+        #     ("Avg RevPAR", f"${ps.avg_revpar:,.2f}"),
+        #     ("Avg ADR Index", f"{ps.avg_adr_index:.2f}"),
+        #     ("Avg Market Penetration", f"{ps.avg_market_penetration:.1%}"),
+        #     ("Above Market", str(ps.listings_above_market)),
+        #     ("Below Market", str(ps.listings_below_market)),
+        # ]
+        # col_x = 15
+        # cell_w = 42  # each cell width (label + value = 84 per column)
+        # pair_w = cell_w * 2  # 84mm per label+value pair
+        # total_pairs_w = pair_w * 3  # 204mm for all pairs
+        # gap = (267 - total_pairs_w) / 2  # distribute remaining space as gaps
+        # col_spacing = pair_w + gap
+        # row_y = min(pdf.get_y() + 4, 130)
+        # for i, (label, value) in enumerate(kpis):
+        #     x = col_x + (i % 3) * col_spacing
+        #     y = row_y + (i // 3) * 18
+        #     pdf.set_xy(x, y)
+        #     pdf.set_font("Arial", "B", 10)
+        #     pdf.cell(cell_w, 8, label, border=1, align="C")
+        #     pdf.set_font("Arial", "", 10)
+        #     pdf.cell(cell_w, 8, _sanitize(value), border=1, align="C")
 
-        # Top/Bottom performer in full-width rows below the grid
-        num_kpi_rows = (len(kpis) + 2) // 3
-        perf_y = row_y + num_kpi_rows * 18
-        kpi_total_width = 267  # match text width
-        for j, (label, value) in enumerate([
-            ("Top Performer", ps.top_performer),
-            ("Bottom Performer", ps.bottom_performer),
-        ]):
-            y = perf_y + j * 18
-            pdf.set_xy(col_x, y)
-            pdf.set_font("Arial", "B", 10)
-            pdf.cell(60, 8, label, border=1, align="C")
-            pdf.set_font("Arial", "", 10)
-            val_width = kpi_total_width - 60
-            pdf.cell(val_width, 8, _sanitize(f"   {value}"), border=1, align="L")
+        # # Top/Bottom performer in full-width rows below the grid
+        # num_kpi_rows = (len(kpis) + 2) // 3
+        # perf_y = row_y + num_kpi_rows * 18
+        # kpi_total_width = 267  # match text width
+        # for j, (label, value) in enumerate([
+        #     ("Top Performer", ps.top_performer),
+        #     ("Bottom Performer", ps.bottom_performer),
+        # ]):
+        #     y = perf_y + j * 18
+        #     pdf.set_xy(col_x, y)
+        #     pdf.set_font("Arial", "B", 10)
+        #     pdf.cell(60, 8, label, border=1, align="C")
+        #     pdf.set_font("Arial", "", 10)
+        #     val_width = kpi_total_width - 60
+        #     pdf.cell(val_width, 8, _sanitize(f"   {value}"), border=1, align="L")
 
         # Market Performance pages (Revenue + Occupancy) — native FPDF drawing
         market_data = []
@@ -351,10 +351,10 @@ class ReportComposerAgent:
                 _draw_page(chunk, is_continued=(chunk_start > 0))
 
         _draw_metric_table(market_data, "revpar_idx", "revpar_idx_stly",
-            "Revenue Market Performance",
+            "Revenue vs. Market Performance",
             "Revenue of Listing compared to Market. 1.00 is market average. Comparing same time last year (STLY) performance.")
         _draw_metric_table(market_data, "mpi", "mpi_stly",
-            "Occupancy Market Performance",
+            "Occupancy vs. Market Performance",
             "Occupancy of Listing compared to Market. 1.00 is market average. Comparing same time last year (STLY) performance.")
 
         # Per-listing pages
@@ -418,15 +418,15 @@ class ReportComposerAgent:
             pdf.add_page()
             _header(_sanitize(listing.listing_name))
 
-            # 4 comparison charts in a row
-            chart_w = 65
+            # 4 comparison charts in a row — matches KPI width (15 to 282)
+            chart_w = 63
             chart_h = 45
             chart_y = CONTENT_TOP
-            chart_x_start = 17
+            chart_x_start = 15
             chart_spacing = (267 - 4 * chart_w) / 3
 
             charts = [
-                ("Total Occupancy", "Current",
+                ("Paid Occupancy", "Current",
                  (listing.paid_occupancy_pct or 0) * 100,
                  "STLY",
                  (listing.paid_occupancy_stly or 0) * 100,
@@ -436,10 +436,10 @@ class ReportComposerAgent:
                  "STLY",
                  (listing.market_occupancy_stly or 0) * 100,
                  True),
-                ("Total Revenue", "Current",
-                 listing.total_revenue or 0,
+                ("Rental Revenue", "Current",
+                 listing.rental_revenue or 0,
                  "STLY",
-                 listing.total_revenue_stly or 0,
+                 listing.rental_revenue_stly or 0,
                  False),
                 ("RevPAR", "Current",
                  listing.rental_revpar or 0,
@@ -453,44 +453,124 @@ class ReportComposerAgent:
                                      cx, chart_y, chart_w, chart_h, is_pct)
 
             # KPI boxes below charts
-            kpi_y = chart_y + chart_h + 5
+            kpi_y = chart_y + chart_h + 10
 
-            # First row: 3 special KPIs from old report
-            mpi_val = f"{listing.market_penetration_index:.0%}" if listing.market_penetration_index else "N/A"
-            bnp_val = str(int(listing.booked_nights_pickup_30d)) if listing.booked_nights_pickup_30d is not None else "N/A"
-            rpi_val = f"{listing.revpar_index:.0%}" if listing.revpar_index else "N/A"
+            def _fmt_pct(v):
+                return f"{v:.1%}" if v is not None and v != 0 else "N/A"
 
-            special_kpis = [
-                ("Occ Market Performance", mpi_val),
-                ("Booked Nights Pickup (30d)", bnp_val),
-                ("Rev Market Performance", rpi_val),
+            def _fmt_dollars(v):
+                return f"${v:,.0f}" if v is not None and v != 0 else "N/A"
+
+            def _fmt_num(v, digits=0):
+                if v is None:
+                    return "N/A"
+                return f"{v:,.{digits}f}"
+
+            def _fmt_idx(v):
+                return f"{v:.2f}" if v is not None and v != 0 else "N/A"
+
+            # Compute derived STLY indexes
+            mpi = listing.market_penetration_index
+            mpi_stly = None
+            if listing.paid_occupancy_stly and listing.market_occupancy_stly and listing.market_occupancy_stly > 0:
+                mpi_stly = listing.paid_occupancy_stly / listing.market_occupancy_stly
+
+            revpar_idx = listing.revpar_index
+            revpar_idx_stly = None
+            if listing.rental_revpar_stly and listing.market_revpar_stly and listing.market_revpar_stly > 0:
+                revpar_idx_stly = listing.rental_revpar_stly / listing.market_revpar_stly
+
+            # 12 KPIs: (label, current_label, current_val, stly_label, stly_val)
+            # stly_label/stly_val None means single-value KPI
+            kpis = [
+                ("Paid Occupancy", "Current", _fmt_pct(listing.paid_occupancy_pct),
+                 "STLY", _fmt_pct(listing.paid_occupancy_stly)),
+                ("Rental Revenue", "Current", _fmt_dollars(listing.rental_revenue),
+                 "STLY", _fmt_dollars(listing.rental_revenue_stly)),
+                ("Number of Bookings", None, _fmt_num(listing.number_of_bookings),
+                 None, None),
+                ("Occupancy vs Market (MPI)", "Current", _fmt_idx(mpi),
+                 "STLY", _fmt_idx(mpi_stly)),
+                ("Revenue vs Market (RevPAR Idx)", "Current", _fmt_idx(revpar_idx),
+                 "STLY", _fmt_idx(revpar_idx_stly)),
+                ("Occupancy Pickup vs Market", "Listing", _fmt_pct(listing.paid_occupancy_pickup_30d),
+                 "Market", _fmt_pct(listing.market_occupancy_pickup_30d)),
+                ("Market Occupancy", "Current", _fmt_pct(listing.market_occupancy_pct),
+                 "STLY", _fmt_pct(listing.market_occupancy_stly)),
+                ("Average Daily Rate", "Current", _fmt_dollars(listing.rental_adr),
+                 "STLY", _fmt_dollars(listing.rental_adr_stly)),
+                ("Rental Revenue Pickup vs Market", "Listing", _fmt_dollars(listing.rental_revpar_pickup_30d),
+                 "Market", _fmt_dollars(listing.market_revpar_pickup_30d)),
+                ("Bookable Nights", "Current", _fmt_num(listing.bookable_nights),
+                 "STLY", _fmt_num(listing.bookable_nights_ly)),
+                ("Blocked Nights Potential", None, _fmt_dollars(listing.unbookable_revenue_potential),
+                 None, None),
+                ("Booking Window vs Market", "Listing", _fmt_num(listing.median_booking_window, 1),
+                 "Market", _fmt_num(listing.market_avg_booking_window, 1)),
             ]
 
-            listing_kpis = special_kpis + [
-                ("Occupancy", f"{listing.occupancy_pct:.1%}" if listing.occupancy_pct else "N/A"),
-                ("Occ STLY", f"{listing.occupancy_stly:.1%}" if listing.occupancy_stly else "N/A"),
-                ("ADR Index", f"{listing.adr_index:.2f}" if listing.adr_index else "N/A"),
-                ("Revenue", f"${listing.total_revenue:,.0f}" if listing.total_revenue else "N/A"),
-                ("Rev STLY", f"${listing.total_revenue_stly:,.0f}" if listing.total_revenue_stly else "N/A"),
-                ("Base Price", f"${listing.base_price:,.0f}" if listing.base_price else "N/A"),
-                ("Market Median", f"${listing.market_median_price:,.0f}" if listing.market_median_price else "N/A"),
-                ("RevPAR Index", f"{listing.revpar_index:.2f}" if listing.revpar_index else "N/A"),
-                ("MPI", f"{listing.market_penetration_index:.1%}" if listing.market_penetration_index else "N/A"),
-            ]
-            for j, (label, value) in enumerate(listing_kpis):
-                kx = 15 + (j % 3) * 92
-                ky = kpi_y + (j // 3) * 14
-                pdf.set_xy(kx, ky)
+            # Layout: 3 columns × 4 rows, each cell has label bar + value bar(s)
+            cols = 3
+            cell_w = 89
+            col_gap = (267 - cols * cell_w) / (cols - 1)
+            label_h = 6
+            value_h = 12
+            cell_h = label_h + value_h
+            row_gap = 0
+
+            for j, (label, left_lbl, left_val, right_lbl, right_val) in enumerate(kpis):
+                col = j % cols
+                row = j // cols
+                cx = 15 + col * (cell_w + col_gap)
+                cy = kpi_y + row * (cell_h + row_gap)
+
+                # Label bar (top)
+                pdf.set_xy(cx, cy)
                 pdf.set_font("Arial", "B", 9)
-                pdf.cell(45, 7, label, border=1, align="C")
-                pdf.set_font("Arial", "", 9)
-                pdf.cell(45, 7, _sanitize(value), border=1, align="C")
+                pdf.cell(cell_w, label_h, _sanitize(label), border=1, align="C")
+
+                # Value bar (bottom) — single or dual
+                pdf.set_xy(cx, cy + label_h)
+                if right_val is None:
+                    # Single value
+                    pdf.set_font("Arial", "", 12)
+                    if left_val == "N/A":
+                        pdf.set_text_color(180, 180, 180)
+                    else:
+                        pdf.set_text_color(0, 0, 0)
+                    pdf.cell(cell_w, value_h, _sanitize(left_val), border=1, align="C")
+                    pdf.set_text_color(0, 0, 0)
+                else:
+                    # Dual value: split in half
+                    half_w = cell_w / 2
+                    pdf.set_font("Arial", "", 7)
+                    pdf.set_text_color(0, 0, 0)
+                    # Left sub-label (small) + value
+                    pdf.cell(half_w, value_h / 2, _sanitize(left_lbl), border="LT", align="C")
+                    pdf.set_xy(cx + half_w, cy + label_h)
+                    pdf.cell(half_w, value_h / 2, _sanitize(right_lbl), border="TR", align="C")
+                    # Values row
+                    pdf.set_xy(cx, cy + label_h + value_h / 2)
+                    pdf.set_font("Arial", "", 10)
+                    if left_val == "N/A":
+                        pdf.set_text_color(180, 180, 180)
+                    else:
+                        pdf.set_text_color(0, 0, 0)
+                    pdf.cell(half_w, value_h / 2, _sanitize(left_val), border="LB", align="C")
+                    pdf.set_xy(cx + half_w, cy + label_h + value_h / 2)
+                    if right_val == "N/A":
+                        pdf.set_text_color(180, 180, 180)
+                    else:
+                        pdf.set_text_color(0, 0, 0)
+                    pdf.cell(half_w, value_h / 2, _sanitize(right_val), border="RB", align="C")
+                    pdf.set_text_color(0, 0, 0)
+
+            num_kpi_rows = (len(kpis) + cols - 1) // cols
 
             # Listing narrative
             if i < len(content.listing_narratives):
                 narr = content.listing_narratives[i]
-                num_kpi_rows = (len(listing_kpis) + 2) // 3
-                ny = kpi_y + num_kpi_rows * 14 + 2
+                ny = kpi_y + num_kpi_rows * (cell_h + row_gap) + 2
                 pdf.set_xy(15, ny)
                 pdf.set_font("Arial", "", 11)
                 pdf.multi_cell(267, 6, _sanitize(narr.content))

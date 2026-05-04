@@ -264,31 +264,49 @@ def _cleanup(csv_temps: list[tuple[str, str]], logo_path: str | None):
 def _maybe_split_by_tag(
     csv_temp: tuple[str, str],
 ) -> list[tuple[str, str]]:
-    """If the file has a 'Tag Name' column, split into separate temp files
-    grouped by the first tag value. Returns the original if no tag column."""
+    """If the file has a 'Tag Name' column, filter to rows tagged with 'Enrich <something>'
+    and split into separate temp files grouped by the text after 'Enrich '.
+    Rows with plain 'Enrich' (no suffix) or no Enrich tag are filtered out.
+    Returns the original file unchanged if no tag column exists."""
     name, path = csv_temp
     try:
-        try:
-            df = pd.read_csv(path, encoding="utf-8-sig")
-        except UnicodeDecodeError:
-            df = pd.read_csv(path, encoding="latin-1")
-        except Exception:
+        if path.endswith((".xlsx", ".xls")):
             df = pd.read_excel(path)
+        else:
+            try:
+                df = pd.read_csv(path, encoding="utf-8-sig")
+            except UnicodeDecodeError:
+                df = pd.read_csv(path, encoding="latin-1")
     except Exception:
         return [csv_temp]
 
-    if "Tag Name" not in df.columns:
+    # Find tag column case-insensitively
+    tag_col = None
+    for col in df.columns:
+        if col.strip().lower() == "tag name":
+            tag_col = col
+            break
+    if tag_col is None:
         return [csv_temp]
 
-    # Extract first tag from comma-separated list
-    df["_first_tag"] = df["Tag Name"].astype(str).str.split(",").str[0].str.strip()
+    # Match "Enrich" followed by optional whitespace and at least one non-whitespace
+    # character (case-insensitive). Captures the suffix as the group name.
+    # Plain "Enrich" (no suffix) is filtered out.
+    pattern = r"^[Ee]nrich\s*(\S.*)$"
+    df["_enrich_suffix"] = (
+        df[tag_col].astype(str).str.strip().str.extract(pattern, expand=False)
+    )
+    # Drop rows without an Enrich-prefixed tag with a suffix
+    df = df.dropna(subset=["_enrich_suffix"]).reset_index(drop=True)
+    if df.empty:
+        return [csv_temp]
 
     result = []
-    for tag, group in df.groupby("_first_tag"):
+    for tag, group in df.groupby("_enrich_suffix"):
         tag_clean = str(tag).strip()
-        if not tag_clean or tag_clean.lower() == "nan":
-            tag_clean = "untagged"
-        group = group.drop(columns=["_first_tag"])
+        if not tag_clean:
+            continue
+        group = group.drop(columns=["_enrich_suffix"])
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".csv", mode="w", newline=""
         ) as tmp:

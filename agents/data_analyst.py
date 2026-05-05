@@ -120,18 +120,25 @@ _INT_FIELDS = {
 # Fields that are strings (not cleaned as numbers)
 _STR_FIELDS = {"listing_name"}
 
+# Fields that Excel stores as raw percent-scale numbers (e.g., 76.52 meaning 76.52%
+# or 292.19 meaning 2.92× market). These get divided by 100 at load time so
+# downstream code can use decimals consistently and format with ":.0%".
+_PERCENT_FIELDS = {
+    # Raw percent occupancy/share fields
+    "occupancy_pct", "occupancy_stly",
+    "market_occupancy_pct", "market_occupancy_stly",
+    "paid_occupancy_pct", "paid_occupancy_stly",
+    "paid_occupancy_pickup_30d", "market_occupancy_pickup_30d",
+    # Index fields (values like 292.19 → 2.92 ratio)
+    "market_penetration_index", "revpar_index", "adr_index",
+}
+
 
 class DataAnalystAgent:
-    """Transforms raw PriceLabs CSV into structured AnalysisResult. No LLM needed."""
+    """Transforms raw PriceLabs Excel export into structured AnalysisResult. No LLM needed."""
 
-    def analyze(self, csv_path: str, month: str = "", year: str = "") -> AnalysisResult:
-        if csv_path.endswith((".xlsx", ".xls")):
-            df = pd.read_excel(csv_path)
-        else:
-            try:
-                df = pd.read_csv(csv_path, encoding="utf-8-sig")
-            except UnicodeDecodeError:
-                df = pd.read_csv(csv_path, encoding="latin-1")
+    def analyze(self, excel_path: str, month: str = "", year: str = "") -> AnalysisResult:
+        df = pd.read_excel(excel_path)
 
         listings = []
         for _, row in df.iterrows():
@@ -149,7 +156,13 @@ class DataAnalystAgent:
                 elif field in _INT_FIELDS:
                     kwargs[field] = _clean_int(raw)
                 else:
-                    kwargs[field] = _clean_float(raw)
+                    val = _clean_float(raw)
+                    # Excel stores percent-scale numbers as raw values (76.52 not 0.7652,
+                    # 292.19 not 2.92). Convert to decimal so ":.0%" and ratio formatting
+                    # work consistently downstream.
+                    if val is not None and field in _PERCENT_FIELDS:
+                        val = val / 100.0
+                    kwargs[field] = val
             listings.append(ListingMetrics(**kwargs))
 
         # Build report_date from month/year if provided

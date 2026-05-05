@@ -55,10 +55,10 @@ def _render_pipeline_section():
             index=pd.Timestamp.now().year - 2020,
         )
         csv_files = st.file_uploader(
-            "Upload CSV(s)",
-            type=["csv", "xlsx"],
+            "Upload Excel File(s)",
+            type=["xlsx", "xls"],
             accept_multiple_files=True,
-            help="Upload PriceLabs CSV/Excel export.",
+            help="Upload PriceLabs Excel export.",
         )
         logo_file = st.file_uploader(
             "Upload Logo (optional)", type=["png", "jpg", "jpeg"],
@@ -70,7 +70,7 @@ def _render_pipeline_section():
 
     if run_btn:
         if not csv_files:
-            st.error("Please upload a CSV file.")
+            st.error("Please upload an Excel file.")
             return
 
         is_batch = len(csv_files) > 1
@@ -107,7 +107,7 @@ def _render_pipeline_section():
         # Save uploads to temp files
         csv_temps = []
         for name, data in csv_files_data:
-            ext = os.path.splitext(name)[1] or ".csv"
+            ext = os.path.splitext(name)[1] or ".xlsx"
             with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
                 tmp.write(data)
                 csv_temps.append((name, tmp.name))
@@ -262,23 +262,17 @@ def _cleanup(csv_temps: list[tuple[str, str]], logo_path: str | None):
 
 
 def _maybe_split_by_tag(
-    csv_temp: tuple[str, str],
+    excel_temp: tuple[str, str],
 ) -> list[tuple[str, str]]:
-    """If the file has a 'Tag Name' column, filter to rows tagged with 'Enrich <something>'
-    and split into separate temp files grouped by the text after 'Enrich '.
-    Rows with plain 'Enrich' (no suffix) or no Enrich tag are filtered out.
+    """If the file has a 'Tag Name' column, filter to rows tagged with 'Enrich<suffix>'
+    and split into separate temp xlsx files grouped by the text after 'Enrich'.
+    Plain 'Enrich' rows or rows without an Enrich tag are filtered out.
     Returns the original file unchanged if no tag column exists."""
-    name, path = csv_temp
+    name, path = excel_temp
     try:
-        if path.endswith((".xlsx", ".xls")):
-            df = pd.read_excel(path)
-        else:
-            try:
-                df = pd.read_csv(path, encoding="utf-8-sig")
-            except UnicodeDecodeError:
-                df = pd.read_csv(path, encoding="latin-1")
+        df = pd.read_excel(path)
     except Exception:
-        return [csv_temp]
+        return [excel_temp]
 
     # Find tag column case-insensitively
     tag_col = None
@@ -287,7 +281,7 @@ def _maybe_split_by_tag(
             tag_col = col
             break
     if tag_col is None:
-        return [csv_temp]
+        return [excel_temp]
 
     # Match "Enrich" followed by optional whitespace and at least one non-whitespace
     # character (case-insensitive). Captures the suffix as the group name.
@@ -296,10 +290,9 @@ def _maybe_split_by_tag(
     df["_enrich_suffix"] = (
         df[tag_col].astype(str).str.strip().str.extract(pattern, expand=False)
     )
-    # Drop rows without an Enrich-prefixed tag with a suffix
     df = df.dropna(subset=["_enrich_suffix"]).reset_index(drop=True)
     if df.empty:
-        return [csv_temp]
+        return [excel_temp]
 
     result = []
     for tag, group in df.groupby("_enrich_suffix"):
@@ -307,17 +300,15 @@ def _maybe_split_by_tag(
         if not tag_clean:
             continue
         group = group.drop(columns=["_enrich_suffix"])
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=".csv", mode="w", newline=""
-        ) as tmp:
-            group.to_csv(tmp, index=False)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+            group.to_excel(tmp.name, index=False)
             result.append((tag_clean, tmp.name))
 
     # Clean up original temp file
     if os.path.exists(path):
         os.unlink(path)
 
-    return result if result else [csv_temp]
+    return result if result else [excel_temp]
 
 
 def _show_single_results(result: PipelineResult, name: str):

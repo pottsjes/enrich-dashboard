@@ -218,14 +218,14 @@ class ReportComposerAgent:
         for l in analysis.listings:
             revpar_idx = l.revpar_index if l.revpar_index is not None else 0.0
             revpar_idx_stly = (
-                l.rental_revpar_stly / l.market_revpar
-                if l.rental_revpar_stly and l.market_revpar and l.market_revpar > 0
+                l.rental_revpar_stly / l.market_revpar_stly
+                if l.rental_revpar_stly and l.market_revpar_stly and l.market_revpar_stly > 0
                 else 0.0
             )
             mpi = l.market_penetration_index if l.market_penetration_index is not None else 0.0
             mpi_stly = (
-                l.occupancy_stly / l.market_occupancy_pct
-                if l.occupancy_stly and l.market_occupancy_pct and l.market_occupancy_pct > 0
+                l.paid_occupancy_stly / l.market_occupancy_stly
+                if l.paid_occupancy_stly and l.market_occupancy_stly and l.market_occupancy_stly > 0
                 else 0.0
             )
             market_data.append({
@@ -394,8 +394,8 @@ class ReportComposerAgent:
             # Value labels inside bars
             pdf.set_font("Arial", "", 7)
             if is_pct:
-                l_str = f"{left_val:.0f}%" if left_val else "0%"
-                r_str = f"{right_val:.0f}%" if right_val else "0%"
+                l_str = f"{left_val:.0%}" if left_val else "0%"
+                r_str = f"{right_val:.0%}" if right_val else "0%"
             else:
                 l_str = f"${left_val:,.0f}" if left_val else "$0"
                 r_str = f"${right_val:,.0f}" if right_val else "$0"
@@ -427,14 +427,14 @@ class ReportComposerAgent:
 
             charts = [
                 ("Paid Occupancy", "Current",
-                 (listing.paid_occupancy_pct or 0) * 100,
+                 listing.paid_occupancy_pct or 0,
                  "STLY",
-                 (listing.paid_occupancy_stly or 0) * 100,
+                 listing.paid_occupancy_stly or 0,
                  True),
                 ("Market Occupancy vs Last Year", "Current",
-                 (listing.market_occupancy_pct or 0) * 100,
+                 listing.market_occupancy_pct or 0,
                  "STLY",
-                 (listing.market_occupancy_stly or 0) * 100,
+                 listing.market_occupancy_stly or 0,
                  True),
                 ("Rental Revenue", "Current",
                  listing.rental_revenue or 0,
